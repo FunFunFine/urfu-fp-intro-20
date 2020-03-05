@@ -1,4 +1,3 @@
-{-# LANGUAGE EmptyCase #-}
 {-
 
   01: Введение
@@ -247,10 +246,13 @@ someArithmeticCalculations =
     - если n > 0, то "positive"
     - если n < 0, то "negative"
 -}
-tellSign :: Int -> String 
-tellSign 0 = "zero"
-tellSign n = if n > 0 then "positive" else "negative"
-
+tellSign :: Int -> String
+tellSign n =
+  if n == 0
+    then "zero"
+    else if n > 0
+      then "positive"
+      else "negative"
 
 {-
   `howManyDigits` возвращает количество цифр целого числа `n`:
@@ -259,11 +261,12 @@ tellSign n = if n > 0 then "positive" else "negative"
     - если n >= 100, то "three-digits or more"
 -}
 howManyDigits :: Int -> String
-
-howManyDigits n 
-  | abs n < 10 = "single"
-  | abs n < 100 = "two-digit"
-  | otherwise = "three-digit or more" 
+howManyDigits n =
+  if abs n < 10
+    then "single"
+    else if (abs n >= 10) && (abs n < 100)
+      then "two-digits"
+      else "three-digits or more"
 
 {-
   `describeNumber` возвращает полное описание целого числа, используя
@@ -274,7 +277,6 @@ howManyDigits n
     - если n >= 100, то "positive three-digit or more"
 -}
 describeNumber :: Int -> String
-
 describeNumber n = tellSign n ++ " " ++ howManyDigits n
 
 -- </Задачи для самостоятельного решения>
@@ -313,7 +315,6 @@ makeZero x =
   больших чисел.
 -}
 factorial :: Integer -> Integer
-
 factorial n = if n == 0 then 1 else
   n * factorial (n - 1)
 
@@ -324,9 +325,9 @@ factorial n = if n == 0 then 1 else
     - если n = 144545, то 6
 -}
 digitsCount :: Int -> Int
-
 digitsCount n = if n == 0 then 1 else
   if abs n > 0 && abs n < 10 then 1 else 1 + digitsCount (n `div` 10)
+
 -- </Задачи для самостоятельного решения>
 
 -- Паттерн матчинг, `case _ of` и guards

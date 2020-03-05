@@ -98,8 +98,10 @@ headOr y Nil = y
     - take 0 (1 :. 2 :. 3 :. Nil) ~> Nil
 -}
 take :: Integer -> List a -> List a
-take n (x :. xs) = x :. (take  (n - 1) $ xs) 
 take _ Nil = Nil
+take 0 _ = Nil
+take n (x :. xs) = x :. take (n-1) (xs)
+
 
 {-
   `length xs` возвращает длину списка `xs`:
@@ -109,8 +111,8 @@ take _ Nil = Nil
     - length ('a' :. 'b' :. Nil) ~> 2
 -}
 length :: List a -> Integer
-length (x :.xs) = 1 + length xs
-length Nil = 0
+length (x :. xs) = 1 + length xs
+length Nil = 0 
 
 {-
   `sum` вычисляет сумму списка целых чисел:
@@ -219,8 +221,8 @@ sum Nil = 0
             4   0
 -}
 foldr :: (a -> b -> b) -> b -> List a -> b
-foldr f b (x:.xs) =  f x $ foldr f b xs
-foldr _ b Nil = b
+foldr f b (x :. xs) = f x $  foldr f b xs
+foldr f b (Nil) = b
 
 {-
   `map` принимает функцию `f` и список, применяя `f` к каждому элементу:
@@ -232,8 +234,8 @@ foldr _ b Nil = b
   Реализуйте с помощью `foldr`.
 -}
 map :: (a -> b) -> List a -> List b
--- foldr (a -> List b -> List b) -> List b -> List a -> List b
-map f xs = foldr (\a -> \acc -> (a :. acc)) Nil xs
+--map f (x:.xs) = f x :. map f xs
+map f xs = foldr (\x -> \ys -> f x :. ys) Nil xs 
 
 {-
   `filter` принимает предикат `f` и список, возвращая список с элементами
@@ -246,7 +248,7 @@ map f xs = foldr (\a -> \acc -> (a :. acc)) Nil xs
   Реализуйте с помощью `foldr`.
 -}
 filter :: (a -> Bool) -> List a -> List a
-filter = error "not implemented"
+filter f xs = foldr (\x -> \ys -> if f x then x :. ys else ys) Nil xs
 
 {-
   Правая свёртка действует на список справа, с конца.
@@ -288,20 +290,21 @@ filter = error "not implemented"
   `foldl f b xs` принимает на вход функцию `f`, начальное значение `b` и обходит
   список `xs` слева:
 -}
+--foldr :: (a -> b -> b) -> b -> List a -> b
 foldl :: (b -> a -> b) -> b -> List a -> b
-foldl f b xs = error "not implemented"
+foldl f b (x:.xs) = foldl f (f b x) xs
+foldl f b Nil = b
 
 {-
   `reverse` разворачивает список:
     - reverse Nil ~> Nil
     - reverse (1 :. 2 :. 3 :. Nil) ~> (3 :. 2 :. 1 :. Nil)
-    - reverse ('a' :. 'b' :. 'c' :. Nil) ~> ('c' :. 'b' :. 'a' :. Nil) 
+    - reverse ('a' :. 'b' :. 'c' :. Nil) ~> ('c' :. ('b' :. ('a' :. Nil)))
 
   Реализуйте с помощью `foldl`.
 -}
 reverse :: List a -> List a
-reverse = error "not implemented"
-
+reverse xs = foldl (\x y -> y:.x ) Nil xs
 {-
   Пришло время перейти к стандартным спискам. Напишите функцию, которая
   конвертирует `List a` в `[a]`:
@@ -314,11 +317,13 @@ reverse = error "not implemented"
     - (:.) соответствует (:)
 -}
 toListH :: List a -> [a]
-toListH = error "not implemented"
+toListH xs = foldr (\a b ->  a : b ) [] xs
+
 
 -- И обратно
 fromListH :: [a] -> List a
-fromListH = error "not implemented"
+fromListH xs = P.foldr (\a b ->  a :. b ) Nil xs
+
 
 -- </Задачи для самостоятельного решения>
 
@@ -357,7 +362,7 @@ fromListH = error "not implemented"
   Подробнее: https://wiki.haskell.org/List_comprehension
 -}
 
--- Строки
+-- Строк
 
 {-
   Стандартный тип `String` для представления строк в Haskell является
@@ -387,17 +392,19 @@ fromListH = error "not implemented"
 {-
   Функция `concat` конкатенирует список списков в список:
 
-    - concat [[12],[3],[4]] ~> [12,3,4]
+    - concat [[12],[3],[4]] ~> [1,2,3,4]
     - concat ["hello ", "world"] ~> "hello world"
 
   Не забывайте, что строки конкатенируются при помощи `(++)`.
 
   Реализуйте при помощи P.foldr:
 
-    P.foldr :: (a -> b -> b) -> b -> [a] -> b
+    P.foldr :: (x ->  y ->   y)  ->  y ->  [x] -> y
 -}
+--  P.foldr :: ([a] ->  [a] ->   [a])  ->  [a] ->  [[a]] -> [a]
 concat :: [[a]] -> [a]
-concat ls = error "not implemented"
+concat ls = P.foldr (++) [] ls
+
 
 {-
   Функция `intercalate` вставляет список элементов между другими списками.
@@ -411,7 +418,11 @@ concat ls = error "not implemented"
 
     P.foldr :: (a -> b -> b) -> b -> [a] -> b
 -}
+--  P.foldr :: (a -> b -> b) -> b -> [a] -> b
 intercalate :: [a] -> [[a]] -> [a]
-intercalate sep ls = error "not implemented"
+intercalate sep ls = P.foldr f [] ls 
+            where 
+              f l [] = l
+              f l ts = l ++ sep ++ ts
 
 -- </Задачи для самостоятельного решения>
