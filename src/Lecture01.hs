@@ -255,15 +255,16 @@ tellSign n = if n > 0 then "positive" else "negative"
 {-
   `howManyDigits` возвращает количество цифр целого числа `n`:
     - если n = 6, то "single"
-    - если n = 12, то "two-digit"
-    - если n >= 100, то "three-digit or more"
+    - если n = 12, то "two-digits"
+    - если n >= 100, то "three-digits or more"
 -}
 howManyDigits :: Int -> String
--- howManyDigits n = error "not implemented"
+
 howManyDigits n 
   | abs n < 10 = "single"
   | abs n < 100 = "two-digit"
   | otherwise = "three-digit or more" 
+
 {-
   `describeNumber` возвращает полное описание целого числа, используя
   функции `tellSign` и `howManyDigits`:
@@ -273,8 +274,8 @@ howManyDigits n
     - если n >= 100, то "positive three-digit or more"
 -}
 describeNumber :: Int -> String
--- describeNumber n = error "not implemented"
-describeNumber n = (tellSign n) ++ " " ++ (howManyDigits n)
+
+describeNumber n = tellSign n ++ " " ++ howManyDigits n
 
 -- </Задачи для самостоятельного решения>
 
@@ -288,8 +289,10 @@ describeNumber n = (tellSign n) ++ " " ++ (howManyDigits n)
   потому что все циклы это просто синтаксический сахар поверх счетчика и меток
   с "go to" или итератора в языках высокого уровня. Для этого необходимы переменные,
   а точнее изменение состояния.
+-}
 
-  В качестве примера рассмотрим функцию, вычитающую единицу из числа
+{-
+  В качестве примера рассмотрим функцию, вычитающая единицу из числа
   и всегда возвращающую ноль:
 -}
 makeZero :: Int -> Int
@@ -310,8 +313,9 @@ makeZero x =
   больших чисел.
 -}
 factorial :: Integer -> Integer
-factorial 0 = 1
-factorial n = n * factorial (n - 1)
+
+factorial n = if n == 0 then 1 else
+  n * factorial (n - 1)
 
 {-
   На вход приходит целое число. Необходимо вернуть количество цифр:
@@ -320,13 +324,9 @@ factorial n = n * factorial (n - 1)
     - если n = 144545, то 6
 -}
 digitsCount :: Int -> Int
-digitsCount n 
-  | abs n < 10 = 1
-  | otherwise = 1 + digitsCount (div n 10)
 
-
-
-
+digitsCount n = if n == 0 then 1 else
+  if abs n > 0 && abs n < 10 then 1 else 1 + digitsCount (n `div` 10)
 -- </Задачи для самостоятельного решения>
 
 -- Паттерн матчинг, `case _ of` и guards
@@ -360,7 +360,7 @@ makeZero' x = makeZero' (x - 1)
 makeZero'' :: Int -> Int
 makeZero'' x = case x of
   0 -> 0
-  x -> makeZero' (x - 1)
+  x -> makeZero'' (x - 1)
 
 {-
   На самом деле компилятор преобразовывает все уравнения, как в функции `makeZero'`,
@@ -403,4 +403,5 @@ isOldEnoughToBuyBeer n
   fst3 (x, _, _) = x
   snd3 (_, y, _) = y
   thrd3 (_, _, z) = z
+    
 -}
