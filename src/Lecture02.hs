@@ -9,13 +9,23 @@
 module Lecture02 where
 
 -- Игнорируем некоторые функции стандартной библиотеки
-import Prelude hiding
-  ( head, take, head, map, foldr, reverse, sum
-  , foldl, concat, sum, filter, length)
+import           Prelude                 hiding ( head
+                                                , take
+                                                , head
+                                                , map
+                                                , foldr
+                                                , reverse
+                                                , sum
+                                                , foldl
+                                                , concat
+                                                , sum
+                                                , filter
+                                                , length
+                                                )
 
 -- Но дополнительно импортируем снова, скрывая все функции
 -- и переименовывая модуль как `P` (похоже на using в C#)
-import qualified Prelude as P
+import qualified Prelude                       as P
 
 {-
   Список в Haskell (и в других функциональных языках) определяется
@@ -88,8 +98,8 @@ infixr 5 :.
     - headOr 2 Nil ~> 2
 -}
 headOr :: a -> List a -> a
-headOr _ (x :. xs) = x 
-headOr y Nil = y
+headOr _ (x :. xs) = x
+headOr y Nil       = y
 
 {-
   `take n` возвращает первые `n` элементов списка:
@@ -98,9 +108,9 @@ headOr y Nil = y
     - take 0 (1 :. 2 :. 3 :. Nil) ~> Nil
 -}
 take :: Integer -> List a -> List a
-take _ Nil = Nil
-take 0 _ = Nil
-take n (x :. xs) = x :. take (n-1) (xs)
+take _ Nil       = Nil
+take 0 _         = Nil
+take n (x :. xs) = x :. take (n - 1) (xs)
 
 
 {-
@@ -112,7 +122,7 @@ take n (x :. xs) = x :. take (n-1) (xs)
 -}
 length :: List a -> Integer
 length (x :. xs) = 1 + length xs
-length Nil = 0 
+length Nil       = 0
 
 {-
   `sum` вычисляет сумму списка целых чисел:
@@ -122,8 +132,8 @@ length Nil = 0
     - sum (104 :. 123 :. 35 :. Nil) ~> 262
 -}
 sum :: List Integer -> Integer
-sum (x:.xs)= x + sum xs
-sum Nil = 0 
+sum (x :. xs) = x + sum xs
+sum Nil       = 0
 
 -- </Задачи для самостоятельного решения>
 
@@ -221,8 +231,8 @@ sum Nil = 0
             4   0
 -}
 foldr :: (a -> b -> b) -> b -> List a -> b
-foldr f b (x :. xs) = f x $  foldr f b xs
-foldr f b (Nil) = b
+foldr f b (x :. xs) = f x $ foldr f b xs
+foldr f b (Nil    ) = b
 
 {-
   `map` принимает функцию `f` и список, применяя `f` к каждому элементу:
@@ -235,7 +245,8 @@ foldr f b (Nil) = b
 -}
 map :: (a -> b) -> List a -> List b
 --map f (x:.xs) = f x :. map f xs
-map f xs = foldr (\x -> \ys -> f x :. ys) Nil xs 
+map f = flip foldr Nil $ (:.) . f
+
 
 {-
   `filter` принимает предикат `f` и список, возвращая список с элементами
@@ -248,7 +259,10 @@ map f xs = foldr (\x -> \ys -> f x :. ys) Nil xs
   Реализуйте с помощью `foldr`.
 -}
 filter :: (a -> Bool) -> List a -> List a
-filter f xs = foldr (\x -> \ys -> if f x then x :. ys else ys) Nil xs
+filter p = foldr f Nil
+ where
+  f x xs | p x       = x :. xs
+         | otherwise = xs
 
 {-
   Правая свёртка действует на список справа, с конца.
@@ -292,8 +306,8 @@ filter f xs = foldr (\x -> \ys -> if f x then x :. ys else ys) Nil xs
 -}
 --foldr :: (a -> b -> b) -> b -> List a -> b
 foldl :: (b -> a -> b) -> b -> List a -> b
-foldl f b (x:.xs) = foldl f (f b x) xs
-foldl f b Nil = b
+foldl f b (x :. xs) = foldl f (f b x) xs
+foldl f b Nil       = b
 
 {-
   `reverse` разворачивает список:
@@ -303,8 +317,10 @@ foldl f b Nil = b
 
   Реализуйте с помощью `foldl`.
 -}
+
 reverse :: List a -> List a
-reverse xs = foldl (\x y -> y:.x ) Nil xs
+reverse = flip (:.) `foldl` Nil
+
 {-
   Пришло время перейти к стандартным спискам. Напишите функцию, которая
   конвертирует `List a` в `[a]`:
@@ -317,12 +333,12 @@ reverse xs = foldl (\x y -> y:.x ) Nil xs
     - (:.) соответствует (:)
 -}
 toListH :: List a -> [a]
-toListH xs = foldr (\a b ->  a : b ) [] xs
+toListH = foldr (:) []
 
 
 -- И обратно
 fromListH :: [a] -> List a
-fromListH xs = P.foldr (\a b ->  a :. b ) Nil xs
+fromListH = P.foldr (:.) Nil
 
 
 -- </Задачи для самостоятельного решения>
@@ -403,7 +419,7 @@ fromListH xs = P.foldr (\a b ->  a :. b ) Nil xs
 -}
 --  P.foldr :: ([a] ->  [a] ->   [a])  ->  [a] ->  [[a]] -> [a]
 concat :: [[a]] -> [a]
-concat ls = P.foldr (++) [] ls
+concat = P.foldr (++) []
 
 
 {-
@@ -420,9 +436,9 @@ concat ls = P.foldr (++) [] ls
 -}
 --  P.foldr :: (a -> b -> b) -> b -> [a] -> b
 intercalate :: [a] -> [[a]] -> [a]
-intercalate sep ls = P.foldr f [] ls 
-            where 
-              f l [] = l
-              f l ts = l ++ sep ++ ts
+intercalate sep = f `P.foldr` []
+ where
+  f l [] = l
+  f l ts = l ++ (sep ++ ts)
 
 -- </Задачи для самостоятельного решения>
