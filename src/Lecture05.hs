@@ -79,7 +79,7 @@ inHowManyYearsChinaWins = length . takeWhile less $ zip china usa
  where
   china = yearGDP 10000 6
   usa   = yearGDP 66000 2
-  less (c, u) = c < u
+  less (c, u) = c <= u
 
 
 {-
