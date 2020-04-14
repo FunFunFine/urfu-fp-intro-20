@@ -1,6 +1,8 @@
 {-# LANGUAGE LambdaCase #-}
 module Lecture06 where
 
+import Control.Monad (liftM2)
+import Data.List (nub)
 {-
   06: Параметрический полиморфизм
 
@@ -128,8 +130,15 @@ module Lecture06 where
   Существуют ли такой контекст Γ и такой тип T, что Γ ⊢ x x : T?
   Если да, то приведите пример Γ и T и постройте дерево вывода Γ ⊢ x x : T;
   если нет, то докажите это (напишите, почему)
+  **Решение**
 
-  *Решение*
+  x x — аппликация x к самому себе, то есть тип x как минимум функциональный. Пусть х типизирован некоторым Т'.
+  Тогда тип х будет таким:
+  x :: (((... -> T) -> T) -> T)= T' и так до бесконечности, поэтому конечный тип вывести не можем, 
+  но с использованием where можно что-то такое изобразить:
+  x :: G where G = (G -> T)
+
+  this task was made by Y-gang
 -}
 -- </Задачи для самостоятельного решения>
 
@@ -578,16 +587,16 @@ module Lecture06 where
 -}
 
 f :: [a] -> Int
-f = error "not implemented"
+f = length
 
 g :: (a -> b)->[a]->[b]
-g = error "not implemented"
+g = map
 
 q :: a -> a -> a
-q x y = error "not implemented"
+q x y = x -- или y, то бишь это своего рода const
 
 p :: (a -> b) -> (b -> c) -> (a -> c)
-p f g = error "not implemented"
+p  = flip (.)
 
 {-
   Крестики-нолики Чёрча.
@@ -624,7 +633,11 @@ createRow x y z = \case
   Third -> z
 
 createField :: Row -> Row -> Row -> Field
-createField x y z = error "not implemented"
+createField x y z = \case 
+  First -> x
+  Second -> y
+  Third -> z
+
 
 -- Чтобы было с чего начинать проверять ваши функции
 emptyField :: Field
@@ -633,17 +646,42 @@ emptyField = createField emptyLine emptyLine emptyLine
     emptyLine = createRow Empty Empty Empty
 
 setCellInRow :: Row -> Index -> Value -> Row
-setCellInRow r i v = error "not implemented"
+setCellInRow r i v index =  if index == i then v else r i
+
+setCellInField :: Field -> Index -> Index -> Value -> Field
+setCellInField f i j v ii jj = if ii == i && jj == j then v else f ii jj
 
 -- Возвращает новое игровое поле, если клетку можно занять.
 -- Возвращает ошибку, если место занято.
 setCell :: Field -> Index -> Index -> Value -> Either String Field
-setCell field i j v = error "not implemented"
+setCell field i j v = case (field i j) of
+  Empty -> Right (setCellInField field i j v)
+  _ -> Left "занято"
 
 data GameState = InProgress | Draw | XsWon | OsWon deriving (Eq, Show)
 
 getGameState :: Field -> GameState
-getGameState field = error "not implemented"
+getGameState field = let 
+                  positions = [First, Second, Third]
+                  straigthDiagonal = zip positions positions
+                  reverseDiagonal = zip (reverse positions) positions
+                  rows = map (flip zip positions . replicate 3) positions
+                  columns = map (zip positions . replicate 3) positions
+                  winningPositions = (straigthDiagonal : reverseDiagonal: rows) ++ columns
+                  cs = map (uncurry field) `map` winningPositions
+
+                  isX Cross = True
+                  isX _ = False
+                  isO Zero = True
+                  isO _ = False
+
+                  xs = filter (all isX) $ cs
+                  os = filter (all isO) $ cs
+                  in case (xs, os) of
+                    ([], []) -> InProgress
+                    (_, []) -> XsWon
+                    ([], _) -> OsWon
+                    _ -> Draw
 
 -- </Задачи для самостоятельного решения>
 
