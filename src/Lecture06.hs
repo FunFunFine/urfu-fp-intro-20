@@ -1,8 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
 module Lecture06 where
 
-import Control.Monad (liftM2)
-import Data.List (nub)
 {-
   06: Параметрический полиморфизм
 
@@ -340,7 +338,8 @@ import Data.List (nub)
   id = λx:∀X.X->X.x 
   selfApp id = (λf:∀X.X->X.f [∀Y.Y->Y] f) (id:∀A.A->A) 
                       ->β (λf:(∀Y.Y->Y)->(∀Y.Y->Y).f f) (id:∀A.A->A)  
-                      ->β id id
+                      ->β id id //тут можно расписать id и продублировать все, но это то уже понятно
+                      ->β id:(∀A.A->A)
 -}
 -- </Задачи для самостоятельного решения>
 
@@ -651,17 +650,17 @@ emptyField = createField emptyLine emptyLine emptyLine
     emptyLine = createRow Empty Empty Empty
 
 setCellInRow :: Row -> Index -> Value -> Row
-setCellInRow r i v index =  if index == i then v else r i
+setCellInRow r i v index =  if index == i then v else r index
 
 setCellInField :: Field -> Index -> Index -> Value -> Field
-setCellInField f i j v ii jj = if ii == i && jj == j then v else f ii jj
+setCellInField f i j v ii  = if ii == i then setCellInRow (f ii) j v  else f ii 
 
 -- Возвращает новое игровое поле, если клетку можно занять.
 -- Возвращает ошибку, если место занято.
 setCell :: Field -> Index -> Index -> Value -> Either String Field
 setCell field i j v = case (field i j) of
   Empty -> Right (setCellInField field i j v)
-  _ -> Left "занято"
+  _ -> Left $ "There is '"++ (show $ field i j) ++ "' on " ++ show i ++ " " ++ show j
 
 data GameState = InProgress | Draw | XsWon | OsWon deriving (Eq, Show)
 
@@ -683,10 +682,10 @@ getGameState field = let
                   xs = filter (all isX) $ cs
                   os = filter (all isO) $ cs
                   in case (xs, os) of
-                    ([], []) -> InProgress
+                    (xs, os) | length xs == length os -> Draw
                     (_, []) -> XsWon
                     ([], _) -> OsWon
-                    _ -> Draw
+                    _ -> InProgress
 
 -- </Задачи для самостоятельного решения>
 
