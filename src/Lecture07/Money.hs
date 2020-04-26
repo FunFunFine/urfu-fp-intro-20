@@ -1,13 +1,13 @@
 {-# OPTIONS_GHC -fno-warn-unused-top-binds #-}
 module Lecture07.Money
   ( Money
-  -- ^ здесь мы экспортируем только тип без конструктора Money и eliminator `getMoney`
+  -- -^ здесь мы экспортируем только тип без конструктора Money и eliminator `getMoney`
   , getMoney
   , USD
   , RUB
   , mkRubbles
   , mkDollars
-  -- ^ вместо конструктора Money экспортируем смарт-конструкторы
+  -- -^ вместо конструктора Money экспортируем смарт-конструкторы
   ) where
 
 {-

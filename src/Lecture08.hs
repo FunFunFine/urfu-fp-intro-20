@@ -6,7 +6,7 @@ module Lecture08 where
 import Data.Char
 import Data.Array
 import qualified Data.Set as Set
-import qualified Data.IntMap as Map
+import qualified Data.Map as Map
 
 {- 08: Структуры данных
 
@@ -38,21 +38,24 @@ import qualified Data.IntMap as Map
 
 -- <Задачи для самостоятельного решения>
 
-data Stack a = Stack [a] deriving (Eq, Show)
+data Stack a = Stack { underlying :: [a] } deriving (Eq, Show)
 
 createStack :: Stack a
-createStack = error "not implemented"
+createStack = Stack []
 
 -- Обратите внимание, что все структуры данных неизменяемые (immutable). Значит, если операция
 -- предполагает изменение структуры, то она просто должна возвращать новую уже изменённую версию.
 push :: Stack a -> a -> Stack a
-push stack x = error "not implemented"
+push (Stack xs) x = Stack $ x:xs
 
 pop :: Stack a -> Maybe (Stack a)
-pop stack = error "not implemented"
+pop (Stack (_:xs)) = Just .Stack $ xs
+pop (Stack []) = Nothing
 
 peek :: Stack a -> Maybe a
-peek stack = error "not implemented"
+peek (Stack (x:_)) = Just x
+peek (Stack []) = Nothing
+
 
 -- </Задачи для самостоятельного решения>
 
@@ -167,23 +170,28 @@ dequeue' (q:qs) = (q, qs)             -- возвращаем (элемент, �
 
 -- <Задачи для самостоятельного решения>
 
-data Queue a = Queue [a] [a] deriving (Eq, Show)
+data Queue a = Queue { leftStack  :: [a]
+                     , rightStack :: [a]
+                     } deriving (Eq, Show)
 
 createQueue :: Queue a
-createQueue = error "not implemented"
+createQueue = Queue [] []
 
 enqueue :: Queue a -> a -> Queue a
-enqueue queue x = error "not implemented"
+enqueue (Queue ls rs) x = Queue (x:ls) rs 
 
 -- если очередь пустая возвращает ошибку
 dequeue :: Queue a -> (a, Queue a)
-dequeue queue = error "not implemented"
+dequeue (Queue [] [])   = error "empty"
+dequeue (Queue (l:ls) []) = (l, Queue [] (ls))
+dequeue (Queue ls (r:rs)) = (r, Queue ls rs)
 
 isEmpty :: Queue a -> Bool
-isEmpty queue = error "not implemented"
+isEmpty (Queue [] []) = True
+isEmpty _             = False
 
 -- </Задачи для самостоятельного решения>
-
+  
 {- Массив
 
   Самая тривиальная в императивном программировании структура здесь оказывается самой сложной.
@@ -357,7 +365,7 @@ emptySet = Set.intersection evenSet oddSet
       - [Int]
       - Array
       - Один из Map, IntMap или Data.HashMap
-    - написать сортировку с использованияем этого класса типов
+    - написать сортировку с использованием этого класса типов
 
   Вы можете сравнить скорость работы разных реализаций с помощью функции computeTime, которая
   принимает на вход:
@@ -376,9 +384,37 @@ emptySet = Set.intersection evenSet oddSet
   https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/glasgow_exts.html?highlight=ambiguous#extension-AllowAmbiguousTypes
 -}
 
+class IntArray a where
+  getAt    :: Int -> a -> Int
+  setAt    :: Int -> Int -> a -> a
+  replicateFor :: Int -> Int -> a
+
+  incrementAt :: Int -> a -> a
+  incrementAt i xs = setAt i ((getAt i xs) + 1) xs
+
+instance IntArray [Int] where 
+  getAt i xs = xs !! i
+  setAt i x xs = take i xs ++ (x : drop (i + 1) xs)
+  replicateFor n x = replicate n x
+
+instance IntArray (Array Int Int) where
+  getAt i xs = xs ! i
+  setAt i x xs = xs // [(i, x)]
+  replicateFor n x = array (0, n) [(i, x) | i <- [0..n]]
+
+instance IntArray (Map.Map Int Int) where
+  getAt i xs =  xs Map.! i
+  setAt i x xs = Map.insert i x xs
+  replicateFor n x = Map.fromList [(i, x) | i <- [0..n]]
+
 -- Сортирует массив целых неотрицательных чисел по возрастанию
 countingSort :: forall a. IntArray a => [Int] -> [Int]
-countingSort = error "not implemented"
+countingSort xs = let 
+              k = 1 + maximum xs 
+              zeroes = replicateFor k 0 :: a
+              counts = foldl (\zs -> \i ->  incrementAt i zs) zeroes xs
+              f r i = r ++ (replicate (getAt i counts) i)
+              in foldl f [] [0..(k-1)]
 
 {-
   Tак можно запустить функцию сортировки с использованием конкретной реализацией массива:
@@ -391,7 +427,7 @@ countingSort = error "not implemented"
 -}
 
 sorted :: [Int]
-sorted = countingSort @[Int] [2,2,2,3,3,3,1,1,1]
+sorted = countingSort @(Map.Map Int Int) [2,2,2,3,3,3,1,1,1]
 
 -- </Задачи для самостоятельного решения>
 
