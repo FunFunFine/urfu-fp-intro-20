@@ -5,6 +5,7 @@ module Lecture08 where
 
 import Data.Char
 import Data.Array
+import Data.Maybe
 import qualified Data.Set as Set
 import qualified Data.Map as Map
 
@@ -183,8 +184,8 @@ enqueue (Queue ls rs) x = Queue (x:ls) rs
 -- если очередь пустая возвращает ошибку
 dequeue :: Queue a -> (a, Queue a)
 dequeue (Queue [] [])   = error "empty"
-dequeue (Queue (l:ls) []) = (l, Queue [] (ls))
 dequeue (Queue ls (r:rs)) = (r, Queue ls rs)
+dequeue (Queue ls []) = dequeue $ Queue [] (reverse ls)
 
 isEmpty :: Queue a -> Bool
 isEmpty (Queue [] []) = True
@@ -385,36 +386,47 @@ emptySet = Set.intersection evenSet oddSet
 -}
 
 class IntArray a where
-  getAt    :: Int -> a -> Int
+  getAt    :: Int -> a -> Maybe Int
   setAt    :: Int -> Int -> a -> a
   replicateFor :: Int -> Int -> a
 
-  incrementAt :: Int -> a -> a
-  incrementAt i xs = setAt i ((getAt i xs) + 1) xs
+  incrementAt :: Int -> a -> Maybe a
+  incrementAt i xs = do
+                    old <- (getAt i xs)
+                    return $ setAt i (old + 1) xs
 
 instance IntArray [Int] where 
-  getAt i xs = xs !! i
+  getAt _ [] =  Nothing
+  getAt i xs 
+    | i >= 0 = Just $ xs !! i
+    | otherwise = Nothing
+  
   setAt i x xs = take i xs ++ (x : drop (i + 1) xs)
   replicateFor n x = replicate n x
 
 instance IntArray (Array Int Int) where
-  getAt i xs = xs ! i
+  getAt i xs 
+    | i < 0          = Nothing 
+    | length xs <= 0 = Nothing
+    | otherwise      = Just $ xs ! i
+
   setAt i x xs = xs // [(i, x)]
   replicateFor n x = array (0, n) [(i, x) | i <- [0..n]]
 
 instance IntArray (Map.Map Int Int) where
-  getAt i xs =  xs Map.! i
+  getAt i xs   = Map.lookup i xs 
   setAt i x xs = Map.insert i x xs
   replicateFor n x = Map.fromList [(i, x) | i <- [0..n]]
 
 -- Сортирует массив целых неотрицательных чисел по возрастанию
 countingSort :: forall a. IntArray a => [Int] -> [Int]
+countingSort [] = []
 countingSort xs = let 
               k = 1 + maximum xs 
-              zeroes = replicateFor k 0 :: a
-              counts = foldl (\zs -> \i ->  incrementAt i zs) zeroes xs
-              f r i = r ++ (replicate (getAt i counts) i)
-              in foldl f [] [0..(k-1)]
+              zeroes  = (replicateFor k 0) :: ( a)
+              counts = foldl (\zs -> \i ->  fromMaybe zs $ incrementAt i zs) zeroes xs
+              f r i = r ++ (replicate (fromMaybe 0 $ getAt i counts) i)
+              in  foldl f [] [0..(k-1)]
 
 {-
   Tак можно запустить функцию сортировки с использованием конкретной реализацией массива:
