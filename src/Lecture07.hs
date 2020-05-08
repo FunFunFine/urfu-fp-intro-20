@@ -1,10 +1,13 @@
-{-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE KindSignatures #-}
+{-# OPTIONS_GHC -fno-warn-orphans -fno-warn-unused-imports #-}
+
 module Lecture07 where
 
-import Lecture07.Money
-import Data.Semigroup
 import Data.Foldable
+import Data.Semigroup
+import Lecture07.Money
 
 {-
   07: Классы типов
@@ -40,7 +43,7 @@ import Data.Foldable
       - UndecidableInstances
       - OverlappingInstances
       - IncoherentInstances
-      - ConstrainedClassMethods 
+      - ConstrainedClassMethods
   - deriving (Eq, Show)
     - https://gitlab.haskell.org/ghc/ghc/-/wikis/commentary/compiler/generic-deriving
 -}
@@ -62,21 +65,32 @@ data Expr
   | Mult Expr Expr
   | UnaryMinus Expr
   | Abs Expr
-  deriving Eq
+  deriving (Eq)
 
 instance Show Expr where
-  show = \case
-    Number n -> show n
-    Plus x y -> show x ++ " + " ++ show y
-    Minus x y -> show x ++ " - " ++ show y
-    Mult x y -> "(" ++ show x ++ " * " ++ show y ++ ")"
-    UnaryMinus e -> "-(" ++ show e ++ ")"
-    Abs e -> "|" ++ show e ++ "|"
-
+  show n = let 
+        showB (Number i) = show i
+        showB m = "(" ++ show m ++ ")" 
+        in 
+          case n of
+   (Plus x y) -> showB x ++ " + " ++ showB y 
+   (Minus x y) -> showB x ++ " - " ++ showB y
+   (Mult x y) ->  showB x ++ " * " ++ showB y
+   (Abs e) -> "|" ++ show e ++ "|"
+   (UnaryMinus i) -> "-" ++ showB i
+   _ -> showB n
+      
+    
 {-
   Реализуйте instance Semigroup для вектора:
 -}
-newtype Vec a = Vec { unVec :: [a] } deriving (Eq, Show)
+newtype Vec a = Vec {unVec :: [a]} deriving (Eq, Show)
+
+instance Num a => Semigroup (Vec a) where 
+  Vec as <> Vec bs = Vec $ map s . zip as $ bs
+                          where 
+                            s (a, b) = a + b
+
 
 instance Num a => Semigroup (Vec a) where
  (<>) (Vec a) (Vec b) = Vec $ zipWith (+) a b
@@ -84,7 +98,10 @@ instance Num a => Semigroup (Vec a) where
 {-
   Реализуйте instance Semigroup для типа для логгирования:
 -}
-newtype LogEntry = LogEntry { unLogEntry :: String } deriving (Eq, Show)
+newtype LogEntry = LogEntry {unLogEntry :: String} deriving (Eq, Show)
+
+instance Semigroup LogEntry where 
+  LogEntry a <> LogEntry b =  LogEntry $ a ++ b
 
 instance Semigroup LogEntry where
   (<>) (LogEntry c) (LogEntry c') = LogEntry (c <> c')
@@ -97,6 +114,11 @@ instance Semigroup LogEntry where
 
   Реализуйте инстансы Semigroup для Money a.
 -}
+instance Semigroup (Money RUB) where 
+  ma <> mb = mkRubbles $ (getMoney ma) + (getMoney mb)
+
+instance Semigroup (Money USD) where 
+  ma <> mb = mkDollars $ (getMoney ma) + (getMoney mb)
 
 instance Semigroup (Money USD) where
   (<>) a b = mkDollars $ getMoney a + getMoney b
@@ -109,28 +131,24 @@ instance Semigroup (Money RUB) where
 -}
 data ExactlyOne a = ExactlyOne a deriving (Eq, Show)
 
-instance Functor ExactlyOne where
-  fmap f (ExactlyOne x) = ExactlyOne (f x)
-
+instance Functor ExactlyOne where 
+  fmap f (ExactlyOne a) = ExactlyOne $ f a
 {-
   Реализуйте инстанс Functor для `Maybe a`
 -}
 data Maybe' a = Just' a | Nothing' deriving (Eq, Show)
 
-instance Functor Maybe' where
-  fmap f = \case
-    Just' x -> Just' $ f x
-    Nothing' -> Nothing'
-
+instance Functor Maybe' where 
+  fmap f (Just' a) = Just' $ f a
+  fmap _ _ = Nothing'
 {-
   Реализуйте инстанс Functor для `List a`
 -}
 data List a = Nil | Cons a (List a) deriving (Eq, Show)
 
-instance Functor List where
-  fmap f = \case
-    Nil -> Nil
-    Cons x xs -> Cons (f x) (fmap f xs)
+instance Functor List where 
+  fmap _ Nil = Nil
+  fmap f (Cons x xs) = f x `Cons` fmap f xs
 
 {-
   `FileTree a` — тип для представления дерева файловой системы.
@@ -144,12 +162,14 @@ data FileTree a
   deriving (Eq, Show)
 
 {-
-  `FileInfo` — тип с информацией о файле: содержит его размер и дату последнего изменения. 
+  `FileInfo` — тип с информацией о файле: содержит его размер и дату последнего изменения.
 -}
-data FileInfo = FileInfo
-  { size :: Integer
-  , modified :: String
-  } deriving (Eq, Show)
+data FileInfo
+  = FileInfo
+      { size :: Integer,
+        modified :: String
+      }
+  deriving (Eq, Show)
 
 {-
   Тогда мы можем строить деревья типа `FileTree FileInfo` и работать с ними.
@@ -160,7 +180,8 @@ data FileInfo = FileInfo
 
 -- Пример использования Foldable для суммирования размера файла
 fileSizeOfTree :: FileTree FileInfo -> Integer
-fileSizeOfTree = getSum . foldMap (\FileInfo{..} -> Sum size)
+fileSizeOfTree = getSum . foldMap (\FileInfo {..} -> Sum size)
+
 -- С помощью расширения RecordWildCards     ^
 -- мы раскрываем record и получаем доступ к полю size   ^^^^
 
@@ -171,18 +192,23 @@ instance Bounded [Char] where
 
 -- А здесь используется для нахождения даты последнего изменения
 latestModified :: FileTree FileInfo -> String
-latestModified = getMax . foldMap (\FileInfo{..} -> Max modified)
+latestModified = getMax . foldMap (\FileInfo {..} -> Max modified)
 
 {-
   Чтобы функции выше работали, необходимо
   реализовать instance Foldable для FileTree:
 -}
+-- data Tree a = Empty | Leaf a | Node (Tree a) a (Tree a)
+
+-- instance Foldable Tree where
+--    foldMap f Empty = mempty
+--    foldMap f (Leaf x) = f x
+--    foldMap f (Node l k r) = foldMap f l `mappend` f k `mappend` foldMap f r
 
 instance Foldable FileTree where
-  foldMap f Empty = mempty
-  foldMap f (File _ s) = f s
-  foldMap f (Dir _ xs) = fold $ map (foldMap f) xs
-
+  foldMap _ Empty = mempty
+  foldMap g (File _ a) = g a
+  foldMap g (Dir _ fa) = foldMap (foldMap g) fa
 
 {-
   В этом задании вам необходимо придумать и написать иерархию исключений
@@ -195,9 +221,29 @@ instance Foldable FileTree where
   3. Класс для ошибок при работе с базой данных.
     - дополнительно возвращает сообщение об ошибке от базы данных
   4. Класс для ошибок доменной логики
-    - дополнительно возвращает контекс с данными
+    - дополнительно возвращает контекст с данными
 
   Реализовывать инстансы не нужно.
 -}
+newtype Json = Json String
+data Severity = Debug | Info | Error | Warn
+newtype ErrorMessage = ErrorMessage String
+newtype DatabaseErrorMessage = DatabaseErrorMessage String
+
+class Exception (m :: * -> *) where
+  getMessage :: m a -> ErrorMessage
+
+class Exception m => ApiException (m :: * -> *) where
+  toJson :: m a -> Json
+  getSeverity :: m a -> Severity
+
+class Exception m => DatabaseException (m :: * -> *) where
+  getDatabaseError :: m a -> DatabaseErrorMessage
+
+class Exception m => DomainException (m :: * -> *) where
+  getContextfulMessage :: m a -> (ErrorMessage, a)
+
+
+
 
 -- </Задачи для самостоятельного решения>

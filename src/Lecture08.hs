@@ -5,8 +5,9 @@ module Lecture08 where
 
 import Data.Char
 import Data.Array
+import Data.Maybe
 import qualified Data.Set as Set
-import qualified Data.IntMap as Map
+import qualified Data.Map as Map
 
 {- 08: Структуры данных
 
@@ -38,7 +39,7 @@ import qualified Data.IntMap as Map
 
 -- <Задачи для самостоятельного решения>
 
-data Stack a = Stack [a] deriving (Eq, Show)
+data Stack a = Stack { underlying :: [a] } deriving (Eq, Show)
 
 createStack :: Stack a
 createStack = Stack []
@@ -46,17 +47,16 @@ createStack = Stack []
 -- Обратите внимание, что все структуры данных неизменяемые (immutable). Значит, если операция
 -- предполагает изменение структуры, то она просто должна возвращать новую уже изменённую версию.
 push :: Stack a -> a -> Stack a
-push (Stack xs) x = Stack (x:xs)
+push (Stack xs) x = Stack $ x:xs
 
 pop :: Stack a -> Maybe (Stack a)
-pop (Stack xs) = case xs of
-  [] -> Nothing
-  (x:xs) -> Just (Stack xs)
+pop (Stack (_:xs)) = Just .Stack $ xs
+pop (Stack []) = Nothing
 
 peek :: Stack a -> Maybe a
-peek (Stack xs) = case xs of
-  [] -> Nothing
-  (x:xs) -> Just x
+peek (Stack (x:_)) = Just x
+peek (Stack []) = Nothing
+
 
 -- </Задачи для самостоятельного решения>
 
@@ -171,26 +171,28 @@ dequeue' (q:qs) = (q, qs)             -- возвращаем (элемент, �
 
 -- <Задачи для самостоятельного решения>
 
-data Queue a = Queue [a] [a] deriving (Eq, Show)
+data Queue a = Queue { leftStack  :: [a]
+                     , rightStack :: [a]
+                     } deriving (Eq, Show)
 
 createQueue :: Queue a
 createQueue = Queue [] []
 
 enqueue :: Queue a -> a -> Queue a
-enqueue (Queue left right) x = Queue (x:left) right
+enqueue (Queue ls rs) x = Queue (x:ls) rs 
 
 -- если очередь пустая возвращает ошибку
 dequeue :: Queue a -> (a, Queue a)
-dequeue (Queue [] []) = error "Can't dequeue empty queue"
-dequeue (Queue left []) = dequeue (Queue [] (reverse left))
-dequeue (Queue left (x:xs)) = (x, Queue left xs)
+dequeue (Queue [] [])   = error "empty"
+dequeue (Queue ls (r:rs)) = (r, Queue ls rs)
+dequeue (Queue ls []) = dequeue $ Queue [] (reverse ls)
 
 isEmpty :: Queue a -> Bool
 isEmpty (Queue [] []) = True
-isEmpty _ = False
+isEmpty _             = False
 
 -- </Задачи для самостоятельного решения>
-
+  
 {- Массив
 
   Самая тривиальная в императивном программировании структура здесь оказывается самой сложной.
@@ -364,7 +366,7 @@ emptySet = Set.intersection evenSet oddSet
       - [Int]
       - Array
       - Один из Map, IntMap или Data.HashMap
-    - написать сортировку с использованияем этого класса типов
+    - написать сортировку с использованием этого класса типов
 
   Вы можете сравнить скорость работы разных реализаций с помощью функции computeTime, которая
   принимает на вход:
@@ -384,45 +386,47 @@ emptySet = Set.intersection evenSet oddSet
 -}
 
 class IntArray a where
-  fromList :: [(Int, Int)] -> a
-  toList :: a -> [(Int, Int)]
-  update :: a -> Int -> Int -> a
-  (#) :: a -> Int -> Int
+  getAt    :: Int -> a -> Maybe Int
+  setAt    :: Int -> Int -> a -> a
+  replicateFor :: Int -> Int -> a
 
-instance IntArray [Int] where
-  toList = zip [0..]
-  fromList = map snd
-  update array i v = (take i array) ++ [v] ++ (drop (i+1) array)
-  (#) array i = array !! i
+  incrementAt :: Int -> a -> Maybe a
+  incrementAt i xs = do
+                    old <- (getAt i xs)
+                    return $ setAt i (old + 1) xs
 
-instance IntArray (Map.IntMap Int) where
-  toList = Map.toList
-  fromList = Map.fromList
-  update array i v = Map.insert i v array
-  (#) array i = array Map.! i
+instance IntArray [Int] where 
+  getAt _ [] =  Nothing
+  getAt i xs 
+    | i >= 0 = Just $ xs !! i
+    | otherwise = Nothing
+  
+  setAt i x xs = take i xs ++ (x : drop (i + 1) xs)
+  replicateFor n x = replicate n x
 
 instance IntArray (Array Int Int) where
-  toList = assocs
-  fromList xs = array (0, length xs - 1) xs
-  update array i v = array // [(i,v)]
-  (#) array i = array ! i
+  getAt i xs 
+    | i < 0          = Nothing 
+    | length xs <= 0 = Nothing
+    | otherwise      = Just $ xs ! i
+
+  setAt i x xs = xs // [(i, x)]
+  replicateFor n x = array (0, n) [(i, x) | i <- [0..n]]
+
+instance IntArray (Map.Map Int Int) where
+  getAt i xs   = Map.lookup i xs 
+  setAt i x xs = Map.insert i x xs
+  replicateFor n x = Map.fromList [(i, x) | i <- [0..n]]
 
 -- Сортирует массив целых неотрицательных чисел по возрастанию
 countingSort :: forall a. IntArray a => [Int] -> [Int]
 countingSort [] = []
-countingSort xs = concatMap repeatX $ toList $ count xs
-  where
-    repeatX :: (Int,Int) -> [Int]
-    repeatX (x, k) = replicate k x
-
-    count :: [Int] -> a
-    count xs = foldl (\l x -> update l x ((l # x) + 1)) emptyCount xs
-
-    emptyCount :: a
-    emptyCount = zeros $ maximum xs + 1
-
-    zeros :: Int -> a
-    zeros k = fromList $ zip [0..] (replicate k 0)
+countingSort xs = let 
+              k = 1 + maximum xs 
+              zeroes  = (replicateFor k 0) :: ( a)
+              counts = foldl (\zs -> \i ->  fromMaybe zs $ incrementAt i zs) zeroes xs
+              f r i = r ++ (replicate (fromMaybe 0 $ getAt i counts) i)
+              in  foldl f [] [0..(k-1)]
 
 {-
   Tак можно запустить функцию сортировки с использованием конкретной реализацией массива:
@@ -435,7 +439,7 @@ countingSort xs = concatMap repeatX $ toList $ count xs
 -}
 
 sorted :: [Int]
-sorted = countingSort @[Int] [2,2,2,3,3,3,1,1,1]
+sorted = countingSort @(Map.Map Int Int) [2,2,2,3,3,3,1,1,1]
 
 -- </Задачи для самостоятельного решения>
 
