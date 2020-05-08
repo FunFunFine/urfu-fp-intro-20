@@ -1,6 +1,19 @@
 {-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveAnyClass #-}
 
 module Lecture09 where
+import Data.Hashable
+import Data.Aeson
+import GHC.Generics
+import Data.Functor
+import System.FilePath.Posix
+import Control.Exception
+import System.Directory
+import System.Random
+import Data.List
+import Data.Ord
+import Data.Foldable
 
 {-
   09: Монады IO и Random
@@ -72,15 +85,18 @@ module Lecture09 where
     http://hackage.haskell.org/package/base-4.12.0.0/docs/System-IO.html
 -}
 
-newtype TodoList = TodoList FilePath deriving (Eq, Show)
+newtype TodoList = TodoList { toPath :: FilePath} deriving (Eq, Show)
 
-newtype Id = Id String deriving (Eq, Show)
+newtype Id = Id {toString :: String}  deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
-newtype Title = Title String deriving (Eq, Show)
+newtype Title = Title String deriving (Eq, Show, Hashable, Generic ,ToJSON, FromJSON)
 
-newtype Deadline = Deadline String deriving (Eq, Show)
+newtype Deadline = Deadline String deriving (Eq, Show, Hashable, Generic ,ToJSON, FromJSON, Ord)
 
-newtype Content = Content String deriving (Eq, Show)
+newtype Content = Content String deriving (Eq, Show, Hashable,Generic ,ToJSON, FromJSON)
+
+newtype TodoError = TodoError { message::String } deriving (Eq, Show, Generic ,ToJSON, FromJSON)
+instance Exception TodoError
 
 -- Тип для чтения Todo
 data Todo = Todo
@@ -89,7 +105,7 @@ data Todo = Todo
   , content :: Content
   , deadline :: Deadline
   , isDone :: Bool
-  } deriving (Eq, Show)
+  } deriving (Eq, Show,Generic , ToJSON, FromJSON)
 
 -- Тип для редактирования Todo
 data TodoEdit = TodoEdit
@@ -98,39 +114,81 @@ data TodoEdit = TodoEdit
   , deadline :: Deadline
   } deriving (Eq, Show)
 
-createTodoList :: FilePath -> TodoList
-createTodoList rootFolder = error "not implemented"
+updateTodo :: Todo -> TodoEdit -> Todo
+updateTodo todo (TodoEdit t c d) = todo {title = t, content = c, deadline = d} 
+
+todoDeadline :: Todo -> Deadline
+todoDeadline (Todo _ _ _ d _) = d
+
+createTodoList :: FilePath ->  IO TodoList
+createTodoList rootFolder = createDirectory rootFolder $> TodoList rootFolder
+
+mkId :: Title -> Content -> Deadline -> Id
+mkId tl text dl = Id . show . hash $ (tl, text, dl)  
+
+saveTodo :: TodoList -> Todo -> IO ()
+saveTodo root todo = encodeFile (toPath root </> (toString . todoId $ todo)) todo $> ()
+
 
 addTodo :: TodoList -> Title -> Content -> Deadline -> IO Id
-addTodo todoList title text deadline = error "not implemented"
+addTodo  root  t c d = saveTodo root todo $> fileId
+                            where 
+                              todo = Todo { todoId = fileId, title = t, content = c, deadline = d, isDone = False }
+                              fileId = mkId t c d
+                                                                
+
 
 readTodo :: TodoList -> Id -> IO Todo
-readTodo todoList id = error "not implemented"
+readTodo todoList (Id id) = do
+                  mtodo  <- decodeFileStrict $ (toPath todoList </> id) :: IO (Maybe Todo)
+                  return $ case mtodo of
+                          Just a -> a
+                          _ -> throw $ TodoError "Corrupted TODO file"
+                            
+                              
 
 showTodo :: TodoList -> Id -> IO ()
-showTodo todoList id = error "not implemented"
+showTodo todoList id =  readTodo todoList id >>= putStr . show
 
 removeTodo :: TodoList -> Id -> IO ()
-removeTodo todoList id = error "not implemented"
+removeTodo todoList (Id filename) = removeFile $ toPath todoList </> filename
 
 editTodo :: TodoList -> Id -> TodoEdit -> IO ()
-editTodo todoList id update = error "not implemented"
+editTodo todoList id update = do
+                          todo <- readTodo todoList id
+                          let updated = updateTodo todo update
+                          saveTodo todoList updated
 
 setTodoAsDone :: TodoList -> Id -> IO ()
-setTodoAsDone todoList id = error "not implemented"
+setTodoAsDone todoList id = do
+                            oldTodo <- readTodo todoList id
+                            let doneTodo = oldTodo { isDone = True}
+                            saveTodo todoList doneTodo
+                              
 
 -- Todo должны быть упорядочены по возрастанию deadline'а
 readAllTodo :: TodoList -> IO [Todo]
-readAllTodo todoList = error "not implemented"
+readAllTodo todoList = do
+                      files <- listDirectory (toPath todoList)
+                      todos <- traverse (readTodo todoList) . map Id $ files
+                      return $ sortBy (comparing todoDeadline) todos
 
 readUnfinishedTodo :: TodoList -> IO [Todo]
-readUnfinishedTodo todoList = error "not implemented"
+readUnfinishedTodo todoList = do
+                            todos <- readAllTodo todoList
+                            return . filter isUnfinished $ todos
+                            where 
+                              isUnfinished (Todo _ _ _ _ False) = True
+                              isUnfinished _ = False
+
+showTodos :: [Todo] -> IO ()
+showTodos = traverse_ (putStrLn . show)
 
 showAllTodo :: TodoList -> IO ()
-showAllTodo todoList = error "not implemented"
+showAllTodo todoList = readAllTodo todoList >>= showTodos
 
 showUnfinishedTodo :: TodoList -> IO ()
-showUnfinishedTodo todoList = error "not implemented"
+showUnfinishedTodo todoList = readUnfinishedTodo todoList >>= showTodos
 
 {-
   Напишите игру для угадывания случайного числа.
@@ -148,8 +206,34 @@ showUnfinishedTodo todoList = error "not implemented"
   Your number: 37  
   > Yep, that's the number!
 -}
+newtype Guess = Guess {toInt :: Integer} deriving (Eq, Show)
+data GuessTry = TooBig | TooSmall | Equal deriving Eq
+instance Show GuessTry where
+  show TooBig = "Too big"
+  show TooSmall = "Too small"
+  show Equal = "Yep, that's the number!"
 
+mkGuess :: Integer -> Guess -> GuessTry
+mkGuess number (Guess guess) 
+      | number == guess = Equal
+      | number < guess = TooBig
+      | otherwise = TooSmall
+
+gameLoop :: Integer -> IO ()
+gameLoop number = do
+              _ <- putStr "Your number:"
+              guess <-  Guess `fmap` (readLn :: IO Integer)
+              let guessTry = mkGuess number guess
+              _ <- putStrLn . show $ guessTry
+              if guessTry == Equal then pure () else gameLoop number
+
+reasonableRandom :: IO Integer
+reasonableRandom = randomRIO (-1000, 1000) :: IO Integer
 playGuessGame :: IO ()
-playGuessGame = error "not implemented"
+playGuessGame = do
+              number <- reasonableRandom
+              _ <- putStrLn $ "Shhhh number is " ++ show number
+              gameLoop number
+
 
 -- </Задачи для самостоятельного решения>
