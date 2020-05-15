@@ -65,20 +65,21 @@ findById :: PersonId -> Reader [Person] (Maybe Person)
 findById pId = do
               ps <- ask
               return . find ((==) pId. id) $ ps
-
+letUs :: String
+letUs = "!\n"++"Разрешите предложить Вам наши услуги."
+letUsNonRespect :: String
+letUsNonRespect = "!\n"++"Разрешите предложить вам наши услуги."
 processSingle :: Person -> String
 processSingle (Person _ _ i o s Nothing) = case s of
-                  Male -> "Уважаемый "++ i ++ " " ++ o ++" \n\
-                          \Разрешите предложить Вам наши услуги."
-                  Female -> "Уважаемая "++ i ++ " " ++ o ++" \n\
-                            \Разрешите предложить Вам наши услуги."
+                  Male -> "Уважаемый "++ i ++ " " ++ o ++ letUs
+                  Female -> "Уважаемая "++ i ++ " " ++ o ++ letUs
 
 processSingle _ = error "wrong"                 
 
 processPair :: Person -> Person -> String
 processPair (Person hId _ hi ho _ (Just wId')) (Person wId _ wi wo _ (Just hId')) 
-                                      | wId' == wId && hId' == hId = "Уважаемые "++ hi ++ " " ++ ho ++ " и " ++ wi ++ " " ++ wo ++" \n\
-                                                                     \Разрешите предложить Вам наши услуги."
+                                      | wId' == wId && hId' == hId =
+                                         "Уважаемые "++ hi ++ " " ++ ho ++ " и " ++ wi ++ " " ++ wo ++ letUsNonRespect
 processPair _ _ = error "not married"
 
 processPerson :: PersonId -> Reader [Person] (Maybe String)
@@ -86,10 +87,14 @@ processPerson pId = do
                   first <- findById pId
                   second <- fmap join . traverse fp $ first 
                   return $ case (first, second) of
-                        (Just h@(Person _ _ _ _ Male _), Just w@(Person _ _ _ _ Female _)) ->  Just (processPair h w)
-                        (Just w@(Person _ _ _ _ Female _), Just h@(Person _ _ _ _ Male _)) ->  Just (processPair h w)
-                        ((Just a), Nothing) ->  Just (processSingle a)
-                        (Nothing,(Just a)) ->  Just (processSingle a)
+                        (Just h@(Person _ _ _ _ Male _), Just w@(Person _ _ _ _ Female _)) -> 
+                              Just (processPair h w)
+                        (Just w@(Person _ _ _ _ Female _), Just h@(Person _ _ _ _ Male _)) ->  
+                              Just (processPair h w)
+                        ((Just a), Nothing) ->  
+                              Just (processSingle a)
+                        (Nothing,(Just a)) ->  
+                              Just (processSingle a)
                         _ ->  Nothing
                     where
                       fp :: Person -> Reader [Person] (Maybe Person)
