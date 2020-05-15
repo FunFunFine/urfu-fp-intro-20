@@ -129,7 +129,6 @@ mkId tl text dl = Id . show . hash $ (tl, text, dl)
 saveTodo :: TodoList -> Todo -> IO ()
 saveTodo root todo = encodeFile (toPath root </> (toString . todoId $ todo)) todo $> ()
 
-
 addTodo :: TodoList -> Title -> Content -> Deadline -> IO Id
 addTodo  root  t c d = saveTodo root todo $> fileId
                             where 
