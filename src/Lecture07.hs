@@ -86,10 +86,6 @@ instance Show Expr where
 -}
 newtype Vec a = Vec {unVec :: [a]} deriving (Eq, Show)
 
-instance Num a => Semigroup (Vec a) where 
-  Vec as <> Vec bs = Vec $ map s . zip as $ bs
-                          where 
-                            s (a, b) = a + b
 
 
 instance Num a => Semigroup (Vec a) where
@@ -99,9 +95,6 @@ instance Num a => Semigroup (Vec a) where
   Реализуйте instance Semigroup для типа для логгирования:
 -}
 newtype LogEntry = LogEntry {unLogEntry :: String} deriving (Eq, Show)
-
-instance Semigroup LogEntry where 
-  LogEntry a <> LogEntry b =  LogEntry $ a ++ b
 
 instance Semigroup LogEntry where
   (<>) (LogEntry c) (LogEntry c') = LogEntry (c <> c')
@@ -114,11 +107,7 @@ instance Semigroup LogEntry where
 
   Реализуйте инстансы Semigroup для Money a.
 -}
-instance Semigroup (Money RUB) where 
-  ma <> mb = mkRubbles $ (getMoney ma) + (getMoney mb)
 
-instance Semigroup (Money USD) where 
-  ma <> mb = mkDollars $ (getMoney ma) + (getMoney mb)
 
 instance Semigroup (Money USD) where
   (<>) a b = mkDollars $ getMoney a + getMoney b

@@ -151,7 +151,7 @@ instance Monad m => Monad (MaybeT m) where
   return  = MaybeT . return . Just
 
   -- (>>=) :: MaybeT m a -> (a -> MaybeT m b) -> MaybeT m b
-  (>>=) transformer f = MaybeT $ do -- Нужен конструктор, чтобы вернуть MeybeT
+  (>>=) transformer f = MaybeT $ do -- Нужен конструктор, чтобы вернуть MaybeT
     -- достаём вычисление из трансформера и выполняем его с помощью <-
     maybe <- runMaybeT transformer
      -- результат должен быть типа m (MaybeT b), т.к. перед do есть вызов конструктора
@@ -220,7 +220,7 @@ savePassphraseT :: String -> MaybeT IO ()
 savePassphraseT passphrase = lift $ putStrLn "Passphrase is saved"
 
 -- Воспользуемся нашим трансформером в примере с получением правильного пароля
-askPassphraseT :: MaybeT IO ()
+askPassphraseT :: MaybeT IO ()  
 askPassphraseT = do
   lift $ putStr "Your new passphrase: "
   getPassphraseT >>= savePassphraseT

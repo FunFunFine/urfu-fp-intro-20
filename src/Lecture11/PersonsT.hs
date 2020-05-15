@@ -35,7 +35,7 @@ emptyStats :: PersonSearchStats
 emptyStats = PersonSearchStats 0 0
 
 newtype PersonsT a = PersonsT
-  { runPersonsT :: NotImplemented }
+  { runPersonsT :: StateT PersonSearchStats (WriterT [String] (Reader [Person])) a}
   deriving
     ( Functor
     , Applicative
@@ -47,7 +47,9 @@ runPersons :: PersonsT a -> ((a, PersonSearchStats), [String])
 runPersons p = error "not implemented"
 
 findById :: PersonId -> PersonsT (Maybe Person)
-findById pId = error "not implemented"
+findById pId = do
+              ps <- ask
+              return . find ((==) pId. id) $ ps
 
 processPerson :: PersonId -> PersonsT (Maybe String)
 processPerson pId = error "not implemented"
