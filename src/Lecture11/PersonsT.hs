@@ -5,6 +5,7 @@ module Lecture11.PersonsT where
 import Data.List
 import Data.Maybe
 import Data.Functor
+import Data.Foldable
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Writer
@@ -86,6 +87,24 @@ processPerson pId = do
   Записывать в "persons.log" общий лог всех поисков.
 -}
 processPersons :: [PersonId] -> IO ()
-processPersons personIds = error "not implemented"
+processPersons personIds = do
+                          let ((results, stats), logs) = runPersons . foldPersons $ personIds
+                          traverse_ (\(i, r) -> putStrLn ("Found " ++ show r ++ "for id" ++ show i)) results
+                          putStrLn $ "Overall stat is " ++ show stats
+                          writeFile "persons.log" $ show logs 
+
+foldPersons :: [PersonId] -> PersonsT ([(PersonId,Maybe String)])
+foldPersons (p:ps) = do
+                    r <- processPerson p
+                    rs <- foldPersons ps 
+                    return $ (p, r) : rs
+
+foldPersons [] = pure []
+
 
 -- </Задачи для самостоятельного решения>
+{-
+putStrLn $ "Found " ++ show r ++ "for id" ++ show i
+                              putStrLn $ "Current stat is " ++ show ns
+                              appendFile "persons.log" $ show nl 
+-}
