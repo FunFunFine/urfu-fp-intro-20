@@ -3,6 +3,7 @@ module API
   , bookMovieAPI
   , module API.Session
   , module API.Preliminary
+  , module API.Booking
   -- ^ экспортируем модули, чтобы их содержимое было доступно вместе с модулем `API`
   ) where
 
@@ -20,6 +21,7 @@ import API.Preliminary
 type BookMovieAPI
   = MovieSessionsAPI
   :<|> PreliminaryAPI
+  :<|> BookingAPI
 
 {-
   Proxy — это особенный тип, который не содержит данных.

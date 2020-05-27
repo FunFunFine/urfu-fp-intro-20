@@ -26,3 +26,19 @@ postPreliminary msId seatId = do
   case bookings of
     (b:_) -> pure $ bookingId b
     _ -> throwJSONError err404 $ JSONError "booking is not found"
+
+
+checkout :: MonadIO m => BookingId -> AppT (Maybe String)
+checkout bId = do
+    booking <- getBooking bId
+    let isLate = isBookingLate booking
+    return $ if isLate then Nothing else Just "ok"
+
+refund :: MonadIO m => BookingId -> AppT (Maybe String)
+refund bId = do
+  booking <- getBooking bId
+  dropBooking bId
+  return $ Just "ok"
+        
+
+
