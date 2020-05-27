@@ -7,6 +7,7 @@ import Control.Monad.Writer
 import Control.Monad.Reader
 import Control.Monad.State
 import Data.List
+import GHC.Base
 
 {-
   10: Остальные монады
@@ -100,15 +101,18 @@ sqrtListComprehensions list = [ x^2 | x <- list ]
 
 -- "Наивная" версия с использованием map'ов
 cartesianProduct :: [a] -> [b] -> [(a,b)]
-cartesianProduct xs ys = error "not implemented"
+cartesianProduct xs ys = (,) <$> xs <*> ys
 
 -- По аналогии с функцией sqrtList перепишите cartesianProduct с использованием return и (=<<)
 cartesianProductMonad :: [a] -> [b] -> [(a,b)]
-cartesianProductMonad xs ys = error "not implemented"
+cartesianProductMonad xs ys = xs >>= (\x -> ys >>= (\y -> return (x,y)))
 
 -- А теперь с использованием do notation
 cartesianProductDoNotation :: [a] -> [b] -> [(a,b)]
-cartesianProductDoNotation xs ys = error "not implemented"
+cartesianProductDoNotation xs ys = do
+                                  x <- xs
+                                  y <- ys
+                                  return (x,y)
 
 -- </Задачи для самостоятельного решения>
 
@@ -247,8 +251,19 @@ data Optional a = Some a | None deriving (Eq, Show, Functor)
 -}
 
 instance Applicative Optional where
+  liftA2 :: (a -> b -> c) -> Optional a -> Optional b -> Optional c
+  liftA2 f (Some a) (Some b) = Some $ f a b
+  liftA2 _ _ _ = None
+
+  pure a = Some a
 
 instance Monad Optional where
+  (>>=) :: Optional a -> (a -> Optional b) -> Optional b
+  (Some a) >>= f = case f a of
+                    s@(Some b) -> s
+                    _ -> None 
+  _ >>= _ = None
+
 
 {-
   Реализуйте instance класса Monad для List
@@ -269,6 +284,11 @@ append Nil ys = ys
 append ((:.) x xs) ys = (:.) x (append xs ys)
 
 instance Applicative List where
+  liftA2 :: (a -> b -> c) -> List a -> List b -> List c
+  liftA2 _ Nil _ =  Nil
+  liftA2 f (x :. xs) ys =  f x `fmap` ys `append` liftA2 f xs ys
+
+  pure a = a :. Nil
 
 -- понадобится для >>=
 concat' :: List (List a) -> List a
@@ -276,6 +296,8 @@ concat' Nil = Nil
 concat' ((:.) x xs) = append x (concat' xs)
 
 instance Monad List where
+  xs >>= f =  concat' . fmap f $ xs
+
 
 -- </Задачи для самостоятельного решения>
 
@@ -493,6 +515,8 @@ buildMapR version = do
 -- Чтобы запустить Reader нужно воспользоваться функцией runReader :: Reader e a -> e -> a
 showMap :: IO ()
 showMap = putStrLn $ runReader (buildMapR 2) (Config 8088 "localhost")
+
+
 
 {-
   Мы опять можем описать Reader и в терминах вычислений.

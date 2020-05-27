@@ -4,11 +4,14 @@ module Lecture11.PersonsT where
 
 import Data.List
 import Data.Maybe
+import Data.Functor
+import Data.Foldable
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Writer
+import Control.Monad()
 import Prelude hiding (id)
-import Lecture10.Reader (Person (..), PersonId, persons, processSingle, processPair)
+import Lecture10.Reader (Person (..), Sex (..), PersonId, persons, processSingle, processPair)
 
 
 -- <Задачи для самостоятельного решения>
@@ -35,22 +38,46 @@ emptyStats :: PersonSearchStats
 emptyStats = PersonSearchStats 0 0
 
 newtype PersonsT a = PersonsT
-  { runPersonsT :: NotImplemented }
+  { runPersonsT :: (ReaderT [Person] (StateT PersonSearchStats (Writer [String])) a)}
   deriving
     ( Functor
     , Applicative
     , Monad
---  ...
+    , MonadReader [Person]
+    , MonadWriter [String]
+    , MonadState PersonSearchStats
     )
 
 runPersons :: PersonsT a -> ((a, PersonSearchStats), [String])
-runPersons p = error "not implemented"
+runPersons = runWriter . flip runStateT emptyStats . flip runReaderT persons . runPersonsT 
+               
 
 findById :: PersonId -> PersonsT (Maybe Person)
-findById pId = error "not implemented"
+findById pId = do
+              ps <- ask
+              let sr = find ((==) pId. id) $ ps
+              case sr of
+                    Just (Person i _ _ _ _ _) -> tell ["Found person " ++ show i] 
+                    _ -> tell ["Person with id " ++ show pId ++ "Not found"]
+              return sr
+               
 
 processPerson :: PersonId -> PersonsT (Maybe String)
-processPerson pId = error "not implemented"
+processPerson pId = do
+                  put emptyStats
+                  first <- findById pId
+                  second <- fmap join . traverse fp $ first 
+                  case (first, second) of
+                        (Just h@(Person _ _ _ _ Male _), Just w@(Person _ _ _ _ Female _)) ->  modify addMarried $> Just (processPair h w)
+                        (Just w@(Person _ _ _ _ Female _), Just h@(Person _ _ _ _ Male _)) ->  modify addMarried $> Just (processPair h w)
+                        ((Just a), Nothing) -> modify addSingle $>  Just (processSingle a)
+                        (Nothing,(Just a)) -> modify addSingle  $> Just (processSingle a)
+                        _ ->  return Nothing
+                    where
+                      fp (Person _ _ _ _ _ (Just anId)) = findById anId
+                      fp _ = return Nothing
+                      addSingle ps@(PersonSearchStats _ s) = ps {singlePersonsCount = s + 1}
+                      addMarried ps@(PersonSearchStats m s) = ps {marriedPersonsCount = m + 1}
 
 {-
   Функция должна выводить на экран:
@@ -60,6 +87,24 @@ processPerson pId = error "not implemented"
   Записывать в "persons.log" общий лог всех поисков.
 -}
 processPersons :: [PersonId] -> IO ()
-processPersons personIds = error "not implemented"
+processPersons personIds = do
+                          let ((results, stats), logs) = runPersons . foldPersons $ personIds
+                          traverse_ (\(i, r) -> putStrLn ("Found " ++ show r ++ "for id" ++ show i)) results
+                          putStrLn $ "Overall stat is " ++ show stats
+                          writeFile "persons.log" $ show logs 
+
+foldPersons :: [PersonId] -> PersonsT ([(PersonId,Maybe String)])
+foldPersons (p:ps) = do
+                    r <- processPerson p
+                    rs <- foldPersons ps 
+                    return $ (p, r) : rs
+
+foldPersons [] = pure []
+
 
 -- </Задачи для самостоятельного решения>
+{-
+putStrLn $ "Found " ++ show r ++ "for id" ++ show i
+                              putStrLn $ "Current stat is " ++ show ns
+                              appendFile "persons.log" $ show nl 
+-}
