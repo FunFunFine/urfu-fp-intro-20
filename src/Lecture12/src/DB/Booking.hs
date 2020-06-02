@@ -56,8 +56,26 @@ instance FromJSON Booking
   Если оно существует и прошло меньше 10 минут от создания, то бронирование
   проходит успешно, иначе необходимо вернуть сообщение об ошибке в JSON формате.
 -}
+isExpiredBooking :: MonadIO m => Booking -> m Bool
+isExpiredBooking (Booking _ _ _ _ created) = do
+                                current <- liftIO getCurrentTime
+                                undefined
+
+
+data BookingAttempt = Done | Old | AlreadyDone  deriving (Eq, Show)
+
 tryBook
   :: DBMonad m
   => BookingId
-  -> m Bool
-tryBook = undefined
+  -> m BookingAttempt
+tryBook bId = runSQL $ \conn -> do
+    booking <- query conn ("SELECT id, seat_id,  movie_session_id, is_preliminary, created_at " <>
+    "from bookings where booking_id = ? limit 1") bId
+    isExpired <-  isExpired booking
+    if isExpired then return Old True else if ! (isPreliminary booking) then return AlreadyDone else  do 
+                                  query conn ("UPDATE bookings " <>
+                                              " SET " <>
+                                              "is_preliminary = ? " <>
+                                              "WHERE " <>
+                                                "id = ?") (False, bId)
+                                  return Done

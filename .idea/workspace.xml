@@ -24,7 +24,12 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="7a92955f-cd1b-4349-899d-6288cc067e08" name="Default Changelist" comment="" />
+    <list default="true" id="7a92955f-cd1b-4349-899d-6288cc067e08" name="Default Changelist" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/Lecture12/src/DB/Booking.hs" beforeDir="false" afterPath="$PROJECT_DIR$/src/Lecture12/src/DB/Booking.hs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/Lecture12/src/Server.hs" beforeDir="false" afterPath="$PROJECT_DIR$/src/Lecture12/src/Server.hs" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -40,6 +45,7 @@
       </map>
     </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+    <option name="ROOT_SYNC" value="DONT_SYNC" />
   </component>
   <component name="GitToolBoxStore">
     <option name="recentBranches">
@@ -74,6 +80,7 @@
     <option name="version" value="1" />
   </component>
   <component name="ProjectId" id="1cUH206ECccBN6B4BX3UkWw7u0L" />
+  <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
@@ -91,6 +98,8 @@
       <option name="presentableId" value="Default" />
       <updated>1590576040981</updated>
       <workItem from="1590576043405" duration="123000" />
+      <workItem from="1590592154955" duration="283000" />
+      <workItem from="1591122124417" duration="336000" />
     </task>
     <servers />
   </component>
@@ -104,5 +113,20 @@
         </entry>
       </map>
     </option>
+    <option name="oldMeFiltersMigrated" value="true" />
+  </component>
+  <component name="WindowStateProjectService">
+    <state x="168" y="94" key="MergeDialog" timestamp="1591122456287">
+      <screen x="0" y="0" width="1680" height="1050" />
+    </state>
+    <state x="168" y="94" key="MergeDialog/0.0.1680.1050@0.0.1680.1050" timestamp="1591122456287" />
+    <state x="478" y="293" key="MultipleFileMergeDialog" timestamp="1591122426655">
+      <screen x="0" y="0" width="1680" height="1050" />
+    </state>
+    <state x="478" y="293" key="MultipleFileMergeDialog/0.0.1680.1050@0.0.1680.1050" timestamp="1591122426655" />
+    <state x="593" y="245" key="git4idea.branch.GitSmartOperationDialog" timestamp="1591122185909">
+      <screen x="0" y="0" width="1680" height="1050" />
+    </state>
+    <state x="593" y="245" key="git4idea.branch.GitSmartOperationDialog/0.0.1680.1050@0.0.1680.1050" timestamp="1591122185909" />
   </component>
 </project>
