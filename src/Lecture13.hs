@@ -1,14 +1,15 @@
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE PolyKinds #-}
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE DataKinds            #-}
+{-# LANGUAGE GADTs                #-}
+{-# LANGUAGE KindSignatures       #-}
+{-# LANGUAGE LambdaCase           #-}
+{-# LANGUAGE PolyKinds            #-}
+{-# LANGUAGE RankNTypes           #-}
+{-# LANGUAGE ScopedTypeVariables  #-}
+{-# LANGUAGE TypeFamilies         #-}
+{-# LANGUAGE TypeOperators        #-}
 {-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE RankNTypes #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns -Werror #-}
+
 
 module Lecture13 where
 
@@ -363,10 +364,15 @@ instance ShowAll xs => Show (HList xs) where
     (HCons x xs) -> show x ++ " : " ++ show xs
 
 -- <Задачи для самостоятельного решения>
+type family EqAll (xs :: [Type]) :: Constraint where
+  EqAll '[] = ()
+  EqAll (x ': xs) = (Eq x, EqAll xs)
 
 -- Реализуйте instance Eq для HList
-instance Eq (HList xs) where
- (==) = error "not implemented"
+instance EqAll xs => Eq (HList xs) where
+ (==) :: (HList xs) -> (HList xs) -> Bool
+ HNil == HNil = True
+ (x `HCons` xs') == (y `HCons` ys') = x == y && xs' == ys'
 
 -- </Задачи для самостоятельного решения>
 
@@ -649,7 +655,8 @@ getAt (SSucc m) (VCons _ (VCons x xs)) = getAt m (VCons x xs)
 
 -- Напишите аналог zip для Vec n
 vzip :: Vec a n -> Vec b n -> Vec (a, b) n
-vzip = error "not implemented"
+vzip (VNil) (VNil) = VNil
+vzip (VCons x xs) (VCons y ys) = VCons (x, y) $ vzip xs ys
 -- </Задачи для самостоятельного решения>
 
 {- printf

@@ -1,0 +1,152 @@
+Index: src/Lecture12/src/DB/Booking.hs
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>{-# LANGUAGE DeriveAnyClass #-}\n\nmodule DB.Booking where\n\nimport Data.Aeson\nimport Data.Time\nimport Database.SQLite.Simple\nimport Database.SQLite.Simple.ToField\nimport Database.SQLite.Simple.FromField\nimport Servant.API\nimport GHC.Generics\n\nimport DB.MovieSession\nimport DB.Seat\nimport DB.Internal\n\n{-\n  Тип для идентификатора бронирования\n-}\nnewtype BookingId = BookingId\n  { unBookingId :: Integer }\n  deriving (Eq, Show)\n  deriving ToRow via (Only Integer)\n  -- ^ этот инстанс позволяет использовать `BookingId` с функциями для базы данных\n  -- `via` говорит о том, что `BookingId` нужно использовать как `Integer`.\n  -- https://ghc.gitlab.haskell.org/ghc/doc/users_guide/exts/deriving_via.html\n  deriving (FromHttpApiData, FromField, ToField, FromJSON, ToJSON)\n    via Integer\n  -- ^ тоже самое для других классов\n\n{-\n  Record, описывающий таблицу `bookings`\n-}\ndata Booking = Booking\n  { bookingId :: BookingId\n  , seatId :: SeatId\n  , isPreliminary :: Bool\n  , movieSessionId :: MovieSessionId\n  , createdAt :: UTCTime\n  } deriving (Eq, Show, Generic)\n-- Класс Generic отвечает за универсальное кодирование типа, т.е. за  такое представление,\n-- в котором используются конструкторы типов из ограниченного набора\n-- https://hackage.haskell.org/package/base-4.14.0.0/docs/GHC-Generics.html\n-- Это представление используется при выводе instance'ов других классов\n\nderiving instance FromRow Booking\nderiving instance ToRow Booking\n-- ^ получаем возможность записывать и читать данные из базы данных с помощью `Booking`\n\ninstance ToJSON Booking\ninstance FromJSON Booking\n-- ^ возможность для работы с JSON\n\n{-\n  Booking запрос должен проверить наличие предварительного бронирования.\n  Если оно существует и прошло меньше 10 минут от создания, то бронирование\n  проходит успешно, иначе необходимо вернуть сообщение об ошибке в JSON формате.\n-}\ntryBook\n  :: DBMonad m\n  => BookingId\n  -> m Bool\ntryBook = undefined\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- src/Lecture12/src/DB/Booking.hs	(revision 135740e9644ec1fa84dd4ac6296e05eedf73df07)
++++ src/Lecture12/src/DB/Booking.hs	(date 1590667168738)
+@@ -56,8 +56,26 @@
+   Если оно существует и прошло меньше 10 минут от создания, то бронирование
+   проходит успешно, иначе необходимо вернуть сообщение об ошибке в JSON формате.
+ -}
++isExpiredBooking :: MonadIO m => Booking -> m Bool
++isExpiredBooking (Booking _ _ _ _ created) = do
++                                current <- liftIO getCurrentTime
++                                undefined
++
++
++data BookingAttempt = Done | Old | AlreadyDone  deriving (Eq, Show)
++
+ tryBook
+   :: DBMonad m
+   => BookingId
+-  -> m Bool
+-tryBook = undefined
++  -> m BookingAttempt
++tryBook bId = runSQL $ \conn -> do
++    booking <- query conn ("SELECT id, seat_id,  movie_session_id, is_preliminary, created_at " <>
++    "from bookings where booking_id = ? limit 1") bId
++    isExpired <-  isExpired booking
++    if isExpired then return Old True else if ! (isPreliminary booking) then return AlreadyDone else  do 
++                                  query conn ("UPDATE bookings " <>
++                                              " SET " <>
++                                              "is_preliminary = ? " <>
++                                              "WHERE " <>
++                                                "id = ?") (False, bId)
++                                  return Done
+Index: .idea/vcs.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+><?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<project version=\"4\">\n  <component name=\"VcsDirectoryMappings\">\n    <mapping directory=\"\" vcs=\"Git\" />\n  </component>\n</project>
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/vcs.xml	(revision 135740e9644ec1fa84dd4ac6296e05eedf73df07)
++++ .idea/vcs.xml	(date 1590592384903)
+@@ -2,5 +2,6 @@
+ <project version="4">
+   <component name="VcsDirectoryMappings">
+     <mapping directory="" vcs="Git" />
++    <mapping directory="$PROJECT_DIR$/src/Lecture12/dist-newstyle/src/sqlite-si_-11a06e7f1707ce6e" vcs="Git" />
+   </component>
+ </project>
+\ No newline at end of file
+Index: src/Lecture12/src/Server.hs
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>module Server where\n\nimport Control.Monad.Trans.Except\nimport Control.Monad.Catch as C\nimport Control.Monad.IO.Class (MonadIO)\nimport Control.Monad.Reader (runReaderT)\nimport Servant as S\n\nimport App\nimport API\nimport Handlers (getSessions, getSeats, postPreliminary)\nimport Utils\n\n{-\n  Для сервера мы используем библиотеку servant-server. Которая предоставляет нам\n  трансформер `ServerT`, где первым параметром идет тип, описывающий наше API. В нашем случае\n  это `BookMovieAPI`, определенный в `API.hs`. Вторым параметром идет уже наш трансформер\n  для приложения `AppT` из модуля `App`.\n\n  Сам сервер — это набор хэндлеров, соединенных с помощью оператора `:<|>`.\n-}\nbookingServer :: MonadIO m => ServerT BookMovieAPI (AppT m)\nbookingServer = (getSessions\n  :<|> getSeats)\n  :<|> postPreliminary\n\n{-\n  Функция, которая создает servant приложение `Application`.\n-}\nmkApplication :: Config -> Application\nmkApplication config = serve bookMovieAPI mkServer\n  where\n    mkServer = hoistServer bookMovieAPI (convertApp config) bookingServer\n\n{-\n  Эта функция конвертирует наше вычисление, завернутое в трансформер `AppT`,\n  в серверный хэндлер библиотеки servant `S.Handler`.\n\n  Конвертируем мы его, запуская наш трансформер с помощью `runApp app`, а потом\n  `runReaderT`, передавая конфигурацию приложения. Функция `catchErrors` уже запускает\n  `ExceptT`, и мы навешиваем обработку исключений, чтобы выводить сообщения об ошибках\n  в stdout.\n\n  Мы можем расширить `errHandler` до более серьезного логгирования например при помощи библиотеки\n  `katip`, которая позволит нам складывать логи в Elasticsearch для удобного поиска.\n-}\nconvertApp :: Config -> AppT IO a -> S.Handler a\nconvertApp config app = catchErrors $ runReaderT (runApp app) config\n  where\n    errHandler :: C.Handler IO (Either ServerError a)\n    errHandler = C.Handler $ \\(SomeException e) -> do\n      print e\n      pure $ Left $ toServerError $ displayException e\n    catchErrors :: ExceptT ServerError IO a -> S.Handler a\n    catchErrors = S.Handler .\n      ExceptT .\n      flip catches [errHandler] .\n      runExceptT\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- src/Lecture12/src/Server.hs	(revision 135740e9644ec1fa84dd4ac6296e05eedf73df07)
++++ src/Lecture12/src/Server.hs	(date 1590591871215)
+@@ -8,7 +8,7 @@
+ 
+ import App
+ import API
+-import Handlers (getSessions, getSeats, postPreliminary)
++import Handlers (getSessions, getSeats, postPreliminary, checkout, refund)
+ import Utils
+ 
+ {-
+@@ -20,9 +20,11 @@
+   Сам сервер — это набор хэндлеров, соединенных с помощью оператора `:<|>`.
+ -}
+ bookingServer :: MonadIO m => ServerT BookMovieAPI (AppT m)
+-bookingServer = (getSessions
+-  :<|> getSeats)
++bookingServer = 
++  (getSessions:<|> getSeats)
+   :<|> postPreliminary
++  :<|> (checkout :<|> refund)
++  
+ 
+ {-
+   Функция, которая создает servant приложение `Application`.
+Index: src/Lecture11/PersonsT.hs
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>{-# LANGUAGE GeneralizedNewtypeDeriving #-}\n\nmodule Lecture11.PersonsT where\n\nimport Data.List\nimport Data.Maybe\nimport Data.Functor\nimport Data.Foldable\nimport Control.Monad.Reader\nimport Control.Monad.State\nimport Control.Monad.Writer\nimport Control.Monad()\nimport Prelude hiding (id)\nimport Lecture10.Reader (Person (..), Sex (..), PersonId, persons, processSingle, processPair)\n\n\n-- <Задачи для самостоятельного решения>\n\n{-\n  В этом задании нужно адаптировать код из 10 лекции к новым требованиям\n  при помощи трансформеров.\n\n  1. Необходимо собирать статистику найденных людей:\n    - количество одиноких персон\n    - количество замужних персон\n  2. В функцию `findById` добавить логгирование с помощью монады Write.\n    Нужно сообщать была ли найдена персона по данному id или нет.\n\n  Вы можете переиспользовать функции, которые остались без изменения из Lecture10.Reader\n-}\n\ndata PersonSearchStats = PersonSearchStats\n  { marriedPersonsCount :: Integer\n  , singlePersonsCount :: Integer\n  } deriving (Show)\n\nemptyStats :: PersonSearchStats\nemptyStats = PersonSearchStats 0 0\n\nnewtype PersonsT a = PersonsT\n  { runPersonsT :: (ReaderT [Person] (StateT PersonSearchStats (Writer [String])) a)}\n  deriving\n    ( Functor\n    , Applicative\n    , Monad\n    , MonadReader [Person]\n    , MonadWriter [String]\n    , MonadState PersonSearchStats\n    )\n\nrunPersons :: PersonsT a -> ((a, PersonSearchStats), [String])\nrunPersons = runWriter . flip runStateT emptyStats . flip runReaderT persons . runPersonsT \n               \n\nfindById :: PersonId -> PersonsT (Maybe Person)\nfindById pId = do\n              ps <- ask\n              let sr = find ((==) pId. id) $ ps\n              case sr of\n                    Just (Person i _ _ _ _ _) -> tell [\"Found person \" ++ show i] \n                    _ -> tell [\"Person with id \" ++ show pId ++ \"Not found\"]\n              return sr\n               \n\nprocessPerson :: PersonId -> PersonsT (Maybe String)\nprocessPerson pId = do\n                  put emptyStats\n                  first <- findById pId\n                  second <- fmap join . traverse fp $ first \n                  case (first, second) of\n                        (Just h@(Person _ _ _ _ Male _), Just w@(Person _ _ _ _ Female _)) ->  modify addMarried $> Just (processPair h w)\n                        (Just w@(Person _ _ _ _ Female _), Just h@(Person _ _ _ _ Male _)) ->  modify addMarried $> Just (processPair h w)\n                        ((Just a), Nothing) -> modify addSingle $>  Just (processSingle a)\n                        (Nothing,(Just a)) -> modify addSingle  $> Just (processSingle a)\n                        _ ->  return Nothing\n                    where\n                      fp (Person _ _ _ _ _ (Just anId)) = findById anId\n                      fp _ = return Nothing\n                      addSingle ps@(PersonSearchStats _ s) = ps {singlePersonsCount = s + 1}\n                      addMarried ps@(PersonSearchStats m s) = ps {marriedPersonsCount = m + 1}\n\n{-\n  Функция должна выводить на экран:\n  - общую поисковую статистику по всем найденым персонам.\n  - результат каждого поиска\n\n  Записывать в \"persons.log\" общий лог всех поисков.\n-}\nprocessPersons :: [PersonId] -> IO ()\nprocessPersons personIds = do\n                          let ((results, stats), logs) = runPersons . foldPersons $ personIds\n                          traverse_ (\\(i, r) -> putStrLn (\"Found \" ++ show r ++ \"for id\" ++ show i)) results\n                          putStrLn $ \"Overall stat is \" ++ show stats\n                          writeFile \"persons.log\" $ show logs \n\nfoldPersons :: [PersonId] -> PersonsT ([(PersonId,Maybe String)])\nfoldPersons (p:ps) = do\n                    r <- processPerson p\n                    rs <- foldPersons ps \n                    return $ (p, r) : rs\n\nfoldPersons [] = pure []\n\n\n-- </Задачи для самостоятельного решения>\n{-\nputStrLn $ \"Found \" ++ show r ++ \"for id\" ++ show i\n                              putStrLn $ \"Current stat is \" ++ show ns\n                              appendFile \"persons.log\" $ show nl \n-}
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- src/Lecture11/PersonsT.hs	(revision 135740e9644ec1fa84dd4ac6296e05eedf73df07)
++++ src/Lecture11/PersonsT.hs	(date 1591113957903)
+@@ -107,4 +107,7 @@
+ putStrLn $ "Found " ++ show r ++ "for id" ++ show i
+                               putStrLn $ "Current stat is " ++ show ns
+                               appendFile "persons.log" $ show nl 
+--}
+\ No newline at end of file
++-}
++
++
++
+Index: .idea/workspace.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+><?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<project version=\"4\">\n  <component name=\"BranchesTreeState\">\n    <expand>\n      <path>\n        <item name=\"ROOT\" type=\"e8cecc67:BranchNodeDescriptor\" />\n        <item name=\"LOCAL_ROOT\" type=\"e8cecc67:BranchNodeDescriptor\" />\n      </path>\n      <path>\n        <item name=\"ROOT\" type=\"e8cecc67:BranchNodeDescriptor\" />\n        <item name=\"REMOTE_ROOT\" type=\"e8cecc67:BranchNodeDescriptor\" />\n      </path>\n      <path>\n        <item name=\"ROOT\" type=\"e8cecc67:BranchNodeDescriptor\" />\n        <item name=\"REMOTE_ROOT\" type=\"e8cecc67:BranchNodeDescriptor\" />\n        <item name=\"GROUP_NODE:funfunfine\" type=\"e8cecc67:BranchNodeDescriptor\" />\n      </path>\n      <path>\n        <item name=\"ROOT\" type=\"e8cecc67:BranchNodeDescriptor\" />\n        <item name=\"REMOTE_ROOT\" type=\"e8cecc67:BranchNodeDescriptor\" />\n        <item name=\"GROUP_NODE:origin\" type=\"e8cecc67:BranchNodeDescriptor\" />\n      </path>\n    </expand>\n    <select />\n  </component>\n  <component name=\"ChangeListManager\">\n    <list default=\"true\" id=\"7a92955f-cd1b-4349-899d-6288cc067e08\" name=\"Default Changelist\" comment=\"\" />\n    <option name=\"SHOW_DIALOG\" value=\"false\" />\n    <option name=\"HIGHLIGHT_CONFLICTS\" value=\"true\" />\n    <option name=\"HIGHLIGHT_NON_ACTIVE_CHANGELIST\" value=\"false\" />\n    <option name=\"LAST_RESOLUTION\" value=\"IGNORE\" />\n  </component>\n  <component name=\"CodeStyleSettingsInfer\">\n    <option name=\"done\" value=\"true\" />\n  </component>\n  <component name=\"Git.Settings\">\n    <option name=\"RECENT_BRANCH_BY_REPOSITORY\">\n      <map>\n        <entry key=\"$PROJECT_DIR$\" value=\"master\" />\n      </map>\n    </option>\n    <option name=\"RECENT_GIT_ROOT_PATH\" value=\"$PROJECT_DIR$\" />\n  </component>\n  <component name=\"GitToolBoxStore\">\n    <option name=\"recentBranches\">\n      <RecentBranches>\n        <option name=\"branchesForRepo\">\n          <list>\n            <RecentBranchesForRepo>\n              <option name=\"branches\">\n                <list>\n                  <RecentBranch>\n                    <option name=\"branchName\" value=\"hw-12\" />\n                    <option name=\"lastUsedInstant\" value=\"1590576125\" />\n                  </RecentBranch>\n                  <RecentBranch>\n                    <option name=\"branchName\" value=\"master\" />\n                    <option name=\"lastUsedInstant\" value=\"1590576069\" />\n                  </RecentBranch>\n                  <RecentBranch>\n                    <option name=\"branchName\" value=\"hw10-11\" />\n                    <option name=\"lastUsedInstant\" value=\"1590576068\" />\n                  </RecentBranch>\n                </list>\n              </option>\n              <option name=\"repositoryRootUrl\" value=\"file://$PROJECT_DIR$\" />\n            </RecentBranchesForRepo>\n          </list>\n        </option>\n      </RecentBranches>\n    </option>\n  </component>\n  <component name=\"ProjectCodeStyleSettingsMigration\">\n    <option name=\"version\" value=\"1\" />\n  </component>\n  <component name=\"ProjectId\" id=\"1cUH206ECccBN6B4BX3UkWw7u0L\" />\n  <component name=\"ProjectViewState\">\n    <option name=\"hideEmptyMiddlePackages\" value=\"true\" />\n    <option name=\"showLibraryContents\" value=\"true\" />\n  </component>\n  <component name=\"PropertiesComponent\">\n    <property name=\"RunOnceActivity.OpenProjectViewOnStart\" value=\"true\" />\n    <property name=\"RunOnceActivity.ShowReadmeOnStart\" value=\"true\" />\n    <property name=\"settings.editor.selected.configurable\" value=\"terminal\" />\n  </component>\n  <component name=\"TaskManager\">\n    <task active=\"true\" id=\"Default\" summary=\"Default task\">\n      <changelist id=\"7a92955f-cd1b-4349-899d-6288cc067e08\" name=\"Default Changelist\" comment=\"\" />\n      <created>1590576040981</created>\n      <option name=\"number\" value=\"Default\" />\n      <option name=\"presentableId\" value=\"Default\" />\n      <updated>1590576040981</updated>\n      <workItem from=\"1590576043405\" duration=\"123000\" />\n    </task>\n    <servers />\n  </component>\n  <component name=\"Vcs.Log.Tabs.Properties\">\n    <option name=\"TAB_STATES\">\n      <map>\n        <entry key=\"MAIN\">\n          <value>\n            <State />\n          </value>\n        </entry>\n      </map>\n    </option>\n  </component>\n</project>
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/workspace.xml	(revision 135740e9644ec1fa84dd4ac6296e05eedf73df07)
++++ .idea/workspace.xml	(date 1590592452997)
+@@ -24,7 +24,11 @@
+     <select />
+   </component>
+   <component name="ChangeListManager">
+-    <list default="true" id="7a92955f-cd1b-4349-899d-6288cc067e08" name="Default Changelist" comment="" />
++    <list default="true" id="7a92955f-cd1b-4349-899d-6288cc067e08" name="Default Changelist" comment="">
++      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
++      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
++      <change beforePath="$PROJECT_DIR$/src/Lecture12/src/Server.hs" beforeDir="false" afterPath="$PROJECT_DIR$/src/Lecture12/src/Server.hs" afterDir="false" />
++    </list>
+     <option name="SHOW_DIALOG" value="false" />
+     <option name="HIGHLIGHT_CONFLICTS" value="true" />
+     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+@@ -74,6 +78,7 @@
+     <option name="version" value="1" />
+   </component>
+   <component name="ProjectId" id="1cUH206ECccBN6B4BX3UkWw7u0L" />
++  <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
+   <component name="ProjectViewState">
+     <option name="hideEmptyMiddlePackages" value="true" />
+     <option name="showLibraryContents" value="true" />
+@@ -91,6 +96,7 @@
+       <option name="presentableId" value="Default" />
+       <updated>1590576040981</updated>
+       <workItem from="1590576043405" duration="123000" />
++      <workItem from="1590592154955" duration="283000" />
+     </task>
+     <servers />
+   </component>
+@@ -104,5 +110,6 @@
+         </entry>
+       </map>
+     </option>
++    <option name="oldMeFiltersMigrated" value="true" />
+   </component>
+ </project>
+\ No newline at end of file

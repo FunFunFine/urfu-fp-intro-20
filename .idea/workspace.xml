@@ -24,12 +24,7 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="7a92955f-cd1b-4349-899d-6288cc067e08" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/Lecture12/src/DB/Booking.hs" beforeDir="false" afterPath="$PROJECT_DIR$/src/Lecture12/src/DB/Booking.hs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/Lecture12/src/Server.hs" beforeDir="false" afterPath="$PROJECT_DIR$/src/Lecture12/src/Server.hs" afterDir="false" />
-    </list>
+    <list default="true" id="7a92955f-cd1b-4349-899d-6288cc067e08" name="Default Changelist" comment="merge;" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -76,6 +71,7 @@
       </RecentBranches>
     </option>
   </component>
+  <component name="JupyterTrust" id="d8f90760-b137-44a8-a362-78fbefec8f53" />
   <component name="ProjectCodeStyleSettingsMigration">
     <option name="version" value="1" />
   </component>
@@ -99,8 +95,16 @@
       <updated>1590576040981</updated>
       <workItem from="1590576043405" duration="123000" />
       <workItem from="1590592154955" duration="283000" />
-      <workItem from="1591122124417" duration="336000" />
+      <workItem from="1591122124417" duration="361000" />
     </task>
+    <task id="LOCAL-00001" summary="merge;">
+      <created>1591122471646</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1591122471646</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -115,6 +119,10 @@
     </option>
     <option name="oldMeFiltersMigrated" value="true" />
   </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="merge;" />
+    <option name="LAST_COMMIT_MESSAGE" value="merge;" />
+  </component>
   <component name="WindowStateProjectService">
     <state x="168" y="94" key="MergeDialog" timestamp="1591122456287">
       <screen x="0" y="0" width="1680" height="1050" />
@@ -124,6 +132,10 @@
       <screen x="0" y="0" width="1680" height="1050" />
     </state>
     <state x="478" y="293" key="MultipleFileMergeDialog/0.0.1680.1050@0.0.1680.1050" timestamp="1591122426655" />
+    <state x="440" y="252" key="Vcs.Push.Dialog.v2" timestamp="1591122477976">
+      <screen x="0" y="0" width="1680" height="1050" />
+    </state>
+    <state x="440" y="252" key="Vcs.Push.Dialog.v2/0.0.1680.1050@0.0.1680.1050" timestamp="1591122477976" />
     <state x="593" y="245" key="git4idea.branch.GitSmartOperationDialog" timestamp="1591122185909">
       <screen x="0" y="0" width="1680" height="1050" />
     </state>
