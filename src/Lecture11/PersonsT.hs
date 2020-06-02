@@ -4,14 +4,11 @@ module Lecture11.PersonsT where
 
 import Data.List
 import Data.Maybe
-import Data.Functor
-import Data.Foldable
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Writer
-import Control.Monad()
 import Prelude hiding (id)
-import Lecture10.Reader (Person (..), Sex (..), PersonId, persons, processSingle, processPair)
+import Lecture10.Reader (Person (..), PersonId, persons, processSingle, processPair)
 
 
 -- <Задачи для самостоятельного решения>
@@ -38,46 +35,47 @@ emptyStats :: PersonSearchStats
 emptyStats = PersonSearchStats 0 0
 
 newtype PersonsT a = PersonsT
-  { runPersonsT :: (ReaderT [Person] (StateT PersonSearchStats (Writer [String])) a)}
+  { runPersonsT :: StateT PersonSearchStats (WriterT [String] (Reader [Person])) a }
   deriving
     ( Functor
     , Applicative
     , Monad
+-- <Удалить перед выкладкой>
     , MonadReader [Person]
     , MonadWriter [String]
     , MonadState PersonSearchStats
+-- </Удалить перед выкладкой>
     )
+-- { runPersonsT :: NotImplemented }
 
 runPersons :: PersonsT a -> ((a, PersonSearchStats), [String])
-runPersons = runWriter . flip runStateT emptyStats . flip runReaderT persons . runPersonsT 
-               
+runPersons p = runReader (runWriterT (runStateT (runPersonsT p) emptyStats)) persons
+-- runPersons p = error "not implemented"
 
 findById :: PersonId -> PersonsT (Maybe Person)
 findById pId = do
-              ps <- ask
-              let sr = find ((==) pId. id) $ ps
-              case sr of
-                    Just (Person i _ _ _ _ _) -> tell ["Found person " ++ show i] 
-                    _ -> tell ["Person with id " ++ show pId ++ "Not found"]
-              return sr
-               
+  tell ["looking for a person:" ++ show pId]
+  persons <- ask
+  return $ find ((== pId) . id) persons
+-- findById pId = error "not implemented"
 
 processPerson :: PersonId -> PersonsT (Maybe String)
-processPerson pId = do
-                  put emptyStats
-                  first <- findById pId
-                  second <- fmap join . traverse fp $ first 
-                  case (first, second) of
-                        (Just h@(Person _ _ _ _ Male _), Just w@(Person _ _ _ _ Female _)) ->  modify addMarried $> Just (processPair h w)
-                        (Just w@(Person _ _ _ _ Female _), Just h@(Person _ _ _ _ Male _)) ->  modify addMarried $> Just (processPair h w)
-                        ((Just a), Nothing) -> modify addSingle $>  Just (processSingle a)
-                        (Nothing,(Just a)) -> modify addSingle  $> Just (processSingle a)
-                        _ ->  return Nothing
-                    where
-                      fp (Person _ _ _ _ _ (Just anId)) = findById anId
-                      fp _ = return Nothing
-                      addSingle ps@(PersonSearchStats _ s) = ps {singlePersonsCount = s + 1}
-                      addMarried ps@(PersonSearchStats m s) = ps {marriedPersonsCount = m + 1}
+processPerson pId = findById pId >>= \case
+  Nothing -> pure Nothing
+  Just p -> do
+    stats <- get
+    case marriedBy p of
+      Nothing -> do
+        put $ stats { singlePersonsCount = singlePersonsCount stats + 1 }
+        return $ Just $ processSingle p
+      Just mId -> do
+        mp' <- findById mId
+        case mp' of
+          Just p' -> do
+            put $ stats { marriedPersonsCount = marriedPersonsCount stats + 2 }
+            return $ Just $ processPair p p'
+          Nothing -> error "invalid db"
+-- processPerson pId = error "not implemented"
 
 {-
   Функция должна выводить на экран:
@@ -88,23 +86,13 @@ processPerson pId = do
 -}
 processPersons :: [PersonId] -> IO ()
 processPersons personIds = do
-                          let ((results, stats), logs) = runPersons . foldPersons $ personIds
-                          traverse_ (\(i, r) -> putStrLn ("Found " ++ show r ++ "for id" ++ show i)) results
-                          putStrLn $ "Overall stat is " ++ show stats
-                          writeFile "persons.log" $ show logs 
-
-foldPersons :: [PersonId] -> PersonsT ([(PersonId,Maybe String)])
-foldPersons (p:ps) = do
-                    r <- processPerson p
-                    rs <- foldPersons ps 
-                    return $ (p, r) : rs
-
-foldPersons [] = pure []
-
+  statsWithLogs <- forM personIds $ \personId -> do
+    let ((result, stats), log) = runPersons $ processPerson personId
+    case result of
+      Just r -> putStrLn r
+      Nothing -> pure ()
+    pure (stats, log)
+  pure ()
+-- processPersons personIds = error "not implemented"
 
 -- </Задачи для самостоятельного решения>
-{-
-putStrLn $ "Found " ++ show r ++ "for id" ++ show i
-                              putStrLn $ "Current stat is " ++ show ns
-                              appendFile "persons.log" $ show nl 
--}

@@ -63,49 +63,31 @@ persons =
 -- Поиск персоны по номеру
 findById :: PersonId -> Reader [Person] (Maybe Person)
 findById pId = do
-              ps <- ask
-              return . find ((==) pId. id) $ ps
-letUs :: String
-letUs = "!\n"++"Разрешите предложить Вам наши услуги."
-letUsNonRespect :: String
-letUsNonRespect = "!\n"++"Разрешите предложить вам наши услуги."
-processSingle :: Person -> String
-processSingle (Person _ _ i o s Nothing) = case s of
-                  Male -> "Уважаемый "++ i ++ " " ++ o ++ letUs
-                  Female -> "Уважаемая "++ i ++ " " ++ o ++ letUs
+  persons <- ask
+  return $ find ((== pId) . id) persons
 
-processSingle _ = error "wrong"                 
+processSingle :: Person -> String
+processSingle p =
+  (if sex p == Male then "Уважаемый " else "Уважаемая ") ++ name p ++ " " ++ surname p ++ "!\n" ++
+  "Разрешите предложить Вам наши услуги."
 
 processPair :: Person -> Person -> String
-processPair (Person hId _ hi ho _ (Just wId')) (Person wId _ wi wo _ (Just hId')) 
-                                      | wId' == wId && hId' == hId =
-                                         "Уважаемые "++ hi ++ " " ++ ho ++ " и " ++ wi ++ " " ++ wo ++ letUsNonRespect
-processPair _ _ = error "not married"
+processPair husband wife = concat
+  [ "Уважаемые ", name husband, " ", surname husband, " и "
+  , name wife, " ", surname wife, "!\n"
+  , "Разрешите предложить вам наши услуги."
+  ]
 
 processPerson :: PersonId -> Reader [Person] (Maybe String)
-processPerson pId = do
-                  first <- findById pId
-                  second <- fmap join . traverse fp $ first 
-                  return $ case (first, second) of
-                        (Just h@(Person _ _ _ _ Male _), Just w@(Person _ _ _ _ Female _)) -> 
-                              Just (processPair h w)
-                        (Just w@(Person _ _ _ _ Female _), Just h@(Person _ _ _ _ Male _)) ->  
-                              Just (processPair h w)
-                        ((Just a), Nothing) ->  
-                              Just (processSingle a)
-                        (Nothing,(Just a)) ->  
-                              Just (processSingle a)
-                        _ ->  Nothing
-                    where
-                      fp :: Person -> Reader [Person] (Maybe Person)
-                      fp (Person _ _ _ _ _ (Just anId)) = findById anId
-                      fp _ = return Nothing
-
+processPerson pId = findById pId >>= \case
+  Nothing -> pure Nothing
+  Just p -> case marriedBy p of
+    Nothing -> return $ Just $ processSingle p
+    Just marriedByP -> do
+      p' <- fromJust <$> findById marriedByP
+      return $ Just $ processPair p p'
 
 processPersons :: [PersonId] -> [Maybe String]
-processPersons personIds =  do
-                      pId <- personIds
-                      return . runReader (processPerson pId) $ persons
-                        
+processPersons personIds = runReader (forM personIds processPerson) persons
 
 -- </Задачи для самостоятельного решения>

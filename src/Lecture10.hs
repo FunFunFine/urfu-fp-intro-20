@@ -261,7 +261,7 @@ instance Monad Optional where
   (>>=) :: Optional a -> (a -> Optional b) -> Optional b
   (Some a) >>= f = case f a of
                     s@(Some b) -> s
-                    _ -> None 
+                    _ -> None
   _ >>= _ = None
 
 
