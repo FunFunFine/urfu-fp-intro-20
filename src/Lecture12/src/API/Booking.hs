@@ -1,11 +1,9 @@
-module API.Preliminary where
+module API.Booking where
 
 import Servant.API
-import DB.MovieSession
-import DB.Seat
 import DB.Booking
-data CheckoutResponse = Paid | TooLate deriving (show)
-data RefundResponse = Refunded | NotFound deriving (show)
+
+
 
 type BookingAPI
   = ("api" 

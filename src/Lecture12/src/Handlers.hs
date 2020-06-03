@@ -13,6 +13,7 @@ import DB.Seat
 import DB.Preliminary
 import DB.Booking
 import Utils
+import Data.Functor
 
 getSessions :: MonadIO m => AppT m [MovieSession]
 getSessions = getMovieSessions
@@ -28,17 +29,22 @@ postPreliminary msId seatId = do
     _ -> throwJSONError err404 $ JSONError "booking is not found"
 
 
-checkout :: MonadIO m => BookingId -> AppT (Maybe String)
+checkout :: MonadIO m => BookingId -> AppT m CheckoutResponse
 checkout bId = do
-    booking <- getBooking bId
-    let isLate = isBookingLate booking
-    return $ if isLate then Nothing else Just "ok"
-
-refund :: MonadIO m => BookingId -> AppT (Maybe String)
+    attempt <- tryBook bId
+    case attempt of 
+      Just (Booked sId msId) -> setSeatUnavailable msId sId $> CheckedOut
+      Just AlreadyBooked -> return CheckedOut
+      Just Expired -> return BookingIsExpired
+      _ -> throwJSONError err404 $ JSONError "booking is not found or something else happened"
+    
+refund :: MonadIO m => BookingId -> AppT m RefundResponse
 refund bId = do
-  booking <- getBooking bId
-  dropBooking bId
-  return $ Just "ok"
+  bookingM <- getBooking bId
+  case bookingM of 
+    Just (Booking _ _ _ True _ ) -> return Preliminary
+    Just (Booking _ sId msId _ _) -> setSeatAvailable msId sId >> removeBooking bId $> Refunded
+    _ -> throwJSONError err404 $ JSONError "booking is not found or something else happened"
         
 
 

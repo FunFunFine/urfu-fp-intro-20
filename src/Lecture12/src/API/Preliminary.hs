@@ -1,4 +1,4 @@
-module API.Booking where
+module API.Preliminary where
 
 import Servant.API
 import DB.MovieSession

@@ -10,6 +10,7 @@ module API
 import Servant
 import API.Session
 import API.Preliminary
+import API.Booking
 
 {-
   API тип всего приложения, который описывает API методы.

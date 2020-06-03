@@ -24,7 +24,12 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="7a92955f-cd1b-4349-899d-6288cc067e08" name="Default Changelist" comment="merge;" />
+    <list default="true" id="7a92955f-cd1b-4349-899d-6288cc067e08" name="Default Changelist" comment="merge;">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/Lecture12/cabal.project" beforeDir="false" afterPath="$PROJECT_DIR$/src/Lecture12/cabal.project" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/Lecture12/src/API/Booking.hs" beforeDir="false" afterPath="$PROJECT_DIR$/src/Lecture12/src/API/Booking.hs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/Lecture12/src/Utils.hs" beforeDir="false" afterPath="$PROJECT_DIR$/src/Lecture12/src/Utils.hs" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -84,6 +89,7 @@
   <component name="PropertiesComponent">
     <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
     <property name="settings.editor.selected.configurable" value="terminal" />
   </component>
   <component name="TaskManager">
@@ -96,6 +102,8 @@
       <workItem from="1590576043405" duration="123000" />
       <workItem from="1590592154955" duration="283000" />
       <workItem from="1591122124417" duration="361000" />
+      <workItem from="1591127185368" duration="67000" />
+      <workItem from="1591209094064" duration="251000" />
     </task>
     <task id="LOCAL-00001" summary="merge;">
       <created>1591122471646</created>
